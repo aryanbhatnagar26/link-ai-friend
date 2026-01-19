@@ -218,34 +218,41 @@ const AgentsPage = () => {
     const message = chatInput.trim();
     setChatInput("");
 
-    const requestedScheduleIso = parseRequestedScheduleTimeIso(message);
-    const wantsPostNow =
-      /\bpost(\s+it)?\s+now\b/i.test(message) ||
-      /\bpublish(\s+it)?\s+now\b/i.test(message);
+    // If the user already has generated posts visible, check for posting commands
+    if (generatedPosts.length > 0) {
+      const requestedScheduleIso = parseRequestedScheduleTimeIso(message);
+      const wantsPostNow =
+        /\bpost(\s+it)?\s+now\b/i.test(message) ||
+        /\bpublish(\s+it)?\s+now\b/i.test(message) ||
+        /\bsend(\s+it)?\s+now\b/i.test(message);
 
-    const isAutoCommand = Boolean(requestedScheduleIso || wantsPostNow);
-
-    // If the user already has generated posts visible, apply the command immediately.
-    if (isAutoCommand && generatedPosts.length > 0) {
-      const first = generatedPosts[0];
-      if (requestedScheduleIso) {
-        await scheduleSingle(first, requestedScheduleIso);
-      } else {
+      if (wantsPostNow) {
+        const first = generatedPosts[0];
         await postSingleNow(first);
+        return;
       }
-      return;
+
+      if (requestedScheduleIso) {
+        const first = generatedPosts[0];
+        await scheduleSingle(first, requestedScheduleIso);
+        return;
+      }
     }
 
     const result = await sendMessage(message);
 
-    // If the message was a post command, auto-post the newly generated first post.
-    if (isAutoCommand && result?.type === "posts_generated" && result.posts?.length) {
-      const first = result.posts[0];
-      if (requestedScheduleIso) {
-        await scheduleSingle(first, requestedScheduleIso);
-      } else if (wantsPostNow) {
-        await postSingleNow(first);
-      }
+    // Handle post_now response - immediately post the first available post
+    if (result?.type === "post_now" && generatedPosts.length > 0) {
+      const first = generatedPosts[0];
+      await postSingleNow(first);
+      return;
+    }
+
+    // Handle schedule_post response - schedule the first available post
+    if (result?.type === "schedule_post" && generatedPosts.length > 0) {
+      const first = generatedPosts[0];
+      await scheduleSingle(first, result.scheduledTime);
+      return;
     }
   };
 
