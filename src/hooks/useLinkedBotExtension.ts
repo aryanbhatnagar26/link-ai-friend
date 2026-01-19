@@ -105,13 +105,29 @@ export const useLinkedBotExtension = () => {
   }, []);
 
   // Send pending posts to extension
-  const sendPendingPosts = useCallback((posts: Post[]) => {
-    if (typeof window.LinkedBotExtension === 'undefined' || !status.isConnected) {
-      throw new Error('Extension not connected');
+  const sendPendingPosts = useCallback(async (posts: Post[]): Promise<{ success: boolean; error?: string }> => {
+    if (typeof window.LinkedBotExtension === 'undefined') {
+      return { success: false, error: 'Extension not installed. Please install the Chrome extension first.' };
     }
 
-    window.LinkedBotExtension.sendPendingPosts(posts);
-  }, [status.isConnected]);
+    // Re-check status before sending
+    try {
+      const statusCheck = await window.LinkedBotExtension.checkStatus();
+      if (!statusCheck.connected) {
+        return { success: false, error: 'Extension not connected. Please connect from the Dashboard first.' };
+      }
+    } catch {
+      return { success: false, error: 'Could not verify extension status.' };
+    }
+
+    try {
+      window.LinkedBotExtension.sendPendingPosts(posts);
+      return { success: true };
+    } catch (error) {
+      console.error('Error sending posts to extension:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to send posts' };
+    }
+  }, []);
 
   // Post immediately
   const postNow = useCallback(async (post: Post) => {
