@@ -194,12 +194,16 @@ const AgentsPage = () => {
         scheduled_time: post.scheduledDateTime || new Date().toISOString(),
       }));
 
-      // Send to extension
-      sendPendingPosts(postsForExtension);
+      // Send to extension (now returns result instead of throwing)
+      const result = await sendPendingPosts(postsForExtension);
       
-      toast.success(`Sent ${generatedPosts.length} posts to extension for LinkedIn posting!`);
-      setShowCreateModal(false);
-      resetModal();
+      if (result.success) {
+        toast.success(`Sent ${generatedPosts.length} posts to extension for LinkedIn posting!`);
+        setShowCreateModal(false);
+        resetModal();
+      } else {
+        toast.error(result.error || "Failed to send posts to extension.");
+      }
     } catch (error) {
       console.error("Error scheduling posts:", error);
       toast.error("Failed to send posts to extension. Please try again.");
