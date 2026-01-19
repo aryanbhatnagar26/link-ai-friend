@@ -155,8 +155,8 @@ export function useAgentChat(
   const [isLoading, setIsLoading] = useState(false);
   const [generatedPosts, setGeneratedPosts] = useState<GeneratedPost[]>([]);
 
-  const sendMessage = useCallback(async (message: string) => {
-    if (!message.trim() || isLoading) return;
+  const sendMessage = useCallback(async (message: string): Promise<AgentChatResponse | null> => {
+    if (!message.trim() || isLoading) return null;
 
     const userMessage: ChatMessage = { role: "user", content: message };
     const nextHistory = [...messages, userMessage];
@@ -186,7 +186,10 @@ export function useAgentChat(
       if (data.type === "posts_generated" && data.posts?.length > 0) {
         setGeneratedPosts(data.posts);
         toast.success(`Created ${data.posts.length} posts about "${data.topic}"!`);
+        return { type: "posts_generated", message: data.message, posts: data.posts, topic: data.topic };
       }
+
+      return { type: "message", message: data.message };
 
     } catch (error: any) {
       console.error("Chat error:", error);
@@ -200,6 +203,7 @@ export function useAgentChat(
       
       setMessages(prev => [...prev, { role: "assistant", content: errorMessage }]);
       toast.error(error.message || "Failed to send message");
+      return null;
     } finally {
       setIsLoading(false);
     }
