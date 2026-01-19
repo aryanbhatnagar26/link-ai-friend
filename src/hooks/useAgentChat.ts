@@ -36,7 +36,10 @@ export interface UserContext {
 
 export type AgentChatResponse =
   | { type: "message"; message: string }
-  | { type: "posts_generated"; message: string; posts: GeneratedPost[]; topic?: string };
+  | { type: "posts_generated"; message: string; posts: GeneratedPost[]; topic?: string }
+  | { type: "post_now"; message: string }
+  | { type: "schedule_post"; message: string; scheduledTime: string }
+  | { type: "ask_schedule"; message: string };
 
 interface UseAgentChatReturn {
   messages: ChatMessage[];
@@ -187,6 +190,18 @@ export function useAgentChat(
         setGeneratedPosts(data.posts);
         toast.success(`Created ${data.posts.length} posts about "${data.topic}"!`);
         return { type: "posts_generated", message: data.message, posts: data.posts, topic: data.topic };
+      }
+
+      if (data.type === "post_now") {
+        return { type: "post_now", message: data.message };
+      }
+
+      if (data.type === "schedule_post") {
+        return { type: "schedule_post", message: data.message, scheduledTime: data.scheduledTime };
+      }
+
+      if (data.type === "ask_schedule") {
+        return { type: "ask_schedule", message: data.message };
       }
 
       return { type: "message", message: data.message };
