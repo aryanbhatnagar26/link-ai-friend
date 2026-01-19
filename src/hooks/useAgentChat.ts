@@ -34,11 +34,15 @@ export interface UserContext {
   background?: string;
 }
 
+export type AgentChatResponse =
+  | { type: "message"; message: string }
+  | { type: "posts_generated"; message: string; posts: GeneratedPost[]; topic?: string };
+
 interface UseAgentChatReturn {
   messages: ChatMessage[];
   isLoading: boolean;
   generatedPosts: GeneratedPost[];
-  sendMessage: (message: string) => Promise<void>;
+  sendMessage: (message: string) => Promise<AgentChatResponse | null>;
   resetChat: () => void;
   updatePost: (postId: string, updates: Partial<GeneratedPost>) => void;
   deletePost: (postId: string) => void;

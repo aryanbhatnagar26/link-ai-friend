@@ -117,31 +117,136 @@ const AgentsPage = () => {
   } = useAgentChat(currentAgentSettings, currentUserContext);
 
   // Extension hook for posting to LinkedIn
-  const { 
-    isConnected: isExtensionConnected, 
+  const {
+    isConnected: isExtensionConnected,
     sendPendingPosts,
-    isLoading: isExtensionLoading 
+    postNow,
+    isLoading: isExtensionLoading,
   } = useLinkedBotExtension();
 
   const [isScheduling, setIsScheduling] = useState(false);
+  const [isPostingNow, setIsPostingNow] = useState(false);
 
-  // Reset chat when agent type changes to show new welcome message
-  useEffect(() => {
-    if (selectedType && createStep === 3) {
-      resetChat();
+  const parseRequestedScheduleTimeIso = (text: string): string | null => {
+    const match = text.match(/\bat\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b/i);
+    if (!match) return null;
+
+    let hours = Number.parseInt(match[1], 10);
+    const minutes = Number.parseInt(match[2] ?? "0", 10);
+    const ampm = match[3].toLowerCase();
+
+    if (ampm === "pm" && hours < 12) hours += 12;
+    if (ampm === "am" && hours === 12) hours = 0;
+
+    const now = new Date();
+    const scheduled = new Date(now);
+    scheduled.setHours(hours, minutes, 0, 0);
+    if (scheduled.getTime() <= now.getTime()) {
+      scheduled.setDate(scheduled.getDate() + 1);
     }
-  }, [selectedType]);
+    return scheduled.toISOString();
+  };
 
-  // Scroll to bottom when messages change
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  const postSingleNow = async (post: { id: string; content: string; imageUrl?: string }) => {
+    if (!isExtensionConnected) {
+      toast.error("Chrome extension not connected. Please connect from Dashboard first.");
+      return;
+    }
+    if (!post.content?.trim()) {
+      toast.error("No post content to publish.");
+      return;
+    }
+
+    setIsPostingNow(true);
+    try {
+      const result = await postNow({
+        id: post.id,
+        content: post.content,
+        photo_url: post.imageUrl,
+        scheduled_time: new Date().toISOString(),
+      });
+
+      if (result?.success) {
+        toast.success("Posted to LinkedIn via extension!");
+      } else {
+        toast.error(result?.error || "Failed to post via extension.");
+      }
+    } catch (error) {
+      console.error("Error posting now:", error);
+      toast.error("Failed to post via extension.");
+    } finally {
+      setIsPostingNow(false);
+    }
+  };
+
+  const scheduleSingle = async (
+    post: { id: string; content: string; imageUrl?: string },
+    scheduledTimeIso?: string
+  ) => {
+    if (!isExtensionConnected) {
+      toast.error("Chrome extension not connected. Please connect from Dashboard first.");
+      return;
+    }
+
+    setIsScheduling(true);
+    try {
+      const result = await sendPendingPosts([
+        {
+          id: post.id,
+          content: post.content,
+          photo_url: post.imageUrl,
+          scheduled_time: scheduledTimeIso || new Date().toISOString(),
+        },
+      ]);
+
+      if (result.success) {
+        toast.success("Sent to extension for scheduled posting!");
+      } else {
+        toast.error(result.error || "Failed to send post to extension.");
+      }
+    } catch (error) {
+      console.error("Error scheduling post:", error);
+      toast.error("Failed to send post to extension.");
+    } finally {
+      setIsScheduling(false);
+    }
+  };
 
   const handleSendMessage = async () => {
     if (!chatInput.trim() || isLoading) return;
-    const message = chatInput;
+
+    const message = chatInput.trim();
     setChatInput("");
-    await sendMessage(message);
+
+    const requestedScheduleIso = parseRequestedScheduleTimeIso(message);
+    const wantsPostNow =
+      /\bpost(\s+it)?\s+now\b/i.test(message) ||
+      /\bpublish(\s+it)?\s+now\b/i.test(message);
+
+    const isAutoCommand = Boolean(requestedScheduleIso || wantsPostNow);
+
+    // If the user already has generated posts visible, apply the command immediately.
+    if (isAutoCommand && generatedPosts.length > 0) {
+      const first = generatedPosts[0];
+      if (requestedScheduleIso) {
+        await scheduleSingle(first, requestedScheduleIso);
+      } else {
+        await postSingleNow(first);
+      }
+      return;
+    }
+
+    const result = await sendMessage(message);
+
+    // If the message was a post command, auto-post the newly generated first post.
+    if (isAutoCommand && result?.type === "posts_generated" && result.posts?.length) {
+      const first = result.posts[0];
+      if (requestedScheduleIso) {
+        await scheduleSingle(first, requestedScheduleIso);
+      } else if (wantsPostNow) {
+        await postSingleNow(first);
+      }
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
