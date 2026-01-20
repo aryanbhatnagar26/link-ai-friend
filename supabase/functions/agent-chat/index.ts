@@ -5,246 +5,176 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-interface ChatMessage {
-  role: "user" | "assistant";
-  content: string;
-}
+function extractTopic(message: string): string {
+  const lower = message.toLowerCase();
 
-interface AgentSettings {
-  type: string;
-  tone: string;
-  emojiLevel: number;
-  postLength: string;
-  voiceReference?: string;
-}
-
-interface UserContext {
-  name?: string;
-  industry?: string;
-}
-
-// Agent type specific prompts
-const AGENT_TYPE_PROMPTS: Record<string, { personality: string; guidelines: string[] }> = {
-  comedy: {
-    personality: `You are a comedy content creator for LinkedIn. Your posts are witty, humorous but still professional. Use funny observations about work/business life.`,
-    guidelines: ['Use emojis (3-5 per post)', 'Keep it light but not offensive', 'End with engaging questions']
-  },
-  professional: {
-    personality: `You are a professional business content creator. Your posts are formal, data-driven, and industry-focused.`,
-    guidelines: ['Minimal emojis', 'Include statistics when relevant', 'Use professional vocabulary']
-  },
-  storytelling: {
-    personality: `You are a storytelling content creator. Your posts are narrative-driven with clear beginning, middle, end.`,
-    guidelines: ['Start with a hook', 'Use short sentences for impact', 'End with lesson or reflection']
-  },
-  "thought-leadership": {
-    personality: `You are a thought leader sharing expert insights. Your posts are forward-thinking and challenge conventional wisdom.`,
-    guidelines: ['Lead with bold statements', 'Back up with reasoning', 'Invite discussion']
-  },
-  motivational: {
-    personality: `You are a motivational content creator. Your posts are inspirational and focus on mindset and personal growth.`,
-    guidelines: ['Use power words', 'Include calls to action', 'Emojis for emphasis']
-  },
-  "data-analytics": {
-    personality: `You are a data-driven content creator. Your posts are statistics-heavy and quantitative.`,
-    guidelines: ['Lead with numbers', 'Use data visualization emojis (📊📈)', 'Include percentages']
-  },
-  creative: {
-    personality: `You are a creative design-focused content creator. Your posts focus on aesthetics and design thinking.`,
-    guidelines: ['Use color emojis', 'Describe visual concepts', 'Suggest visual content']
-  },
-  news: {
-    personality: `You are a company news/updates content creator. Your posts are announcement-focused and clear.`,
-    guidelines: ['Start with announcement', 'Include key details', 'Thank the community']
-  }
-};
-
-function getPostLengthGuideline(postLength: string): string {
-  switch (postLength) {
-    case "short": return "Keep posts under 100 words. Concise and punchy.";
-    case "long": return "Posts should be 200-300 words. Detailed and comprehensive.";
-    default: return "Posts should be 100-200 words. Well-balanced.";
-  }
-}
-
-function getEmojiGuideline(level: number): string {
-  if (level === 0) return "No emojis at all.";
-  if (level === 1) return "Minimal emojis (1-2 per post).";
-  if (level === 2) return "Moderate emojis (3-5 per post).";
-  if (level === 3) return "Generous emojis (5-8 per post).";
-  return "Heavy emoji usage throughout.";
-}
-
-function extractTopicFromMessage(message: string): string | null {
-  const patterns = [
-    /(?:about|on|regarding|for)\s+["']?([^"'\n.]+?)["']?(?:\.|$)/i,
-    /["']([^"']+)["']/,
-  ];
-
-  for (const pattern of patterns) {
-    const match = message.match(pattern);
-    if (match?.[1]?.trim()) {
-      return match[1].trim();
-    }
+  // Prefer explicit "about X" pattern
+  const aboutIdx = lower.indexOf("about");
+  if (aboutIdx !== -1) {
+    const after = message.slice(aboutIdx + "about".length).trim();
+    if (after) return after.replace(/[.?!]$/, "").trim();
   }
 
-  // Clean up the message to extract topic
+  // Fallback: strip common verbs
   const cleaned = message
-    .replace(/^(create|generate|write|make|please|can you|could you|i want|i need)\s*/gi, "")
+    .replace(/^(create|generate|write|make|draft|please|can you|could you|i want|i need)\s*/gi, "")
     .replace(/\s*(posts?|content|articles?|drafts?)\s*/gi, " ")
-    .replace(/\s*(about|on|for|regarding)\s*/gi, " ")
-    .replace(/\d+\s*/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 
-  return cleaned.length > 2 ? cleaned : null;
+  return cleaned || "professional development";
 }
 
-function isPostGenerationRequest(message: string): boolean {
-  const lower = message.toLowerCase();
-  const triggers = ["create", "generate", "write", "make", "draft", "post about"];
-  const hasTrigger = triggers.some(t => lower.includes(t));
-  const mentionsPost = lower.includes("post") || lower.includes("content");
-  
-  // Also match "post about X" pattern
-  if (/^(post|posts)\s+(about|on|regarding)\b/.test(lower)) return true;
-  
-  return hasTrigger || (hasTrigger && mentionsPost);
+function isGreeting(lower: string): boolean {
+  return lower === "hi" || lower === "hello" || lower === "hey" || lower === "hola";
+}
+
+function isPostRequest(lower: string): boolean {
+  return (
+    lower.includes("write") ||
+    lower.includes("create") ||
+    lower.includes("generate") ||
+    lower.includes("draft") ||
+    lower.includes("post about") ||
+    /^(post|posts)\s+(about|on|regarding)\b/.test(lower)
+  );
+}
+
+function isPostNowRequest(lower: string): boolean {
+  return (
+    lower.includes("post it") ||
+    lower.includes("publish") ||
+    lower.includes("post now") ||
+    lower.includes("post this")
+  );
+}
+
+function buildDraft(topic: string): string {
+  return `The landscape of ${topic} is evolving rapidly.
+
+As professionals, we need to stay ahead of the curve and embrace innovation while staying grounded in what actually works.
+
+Here are three key insights I've been reflecting on:
+
+1) Continuous learning is no longer optional—it's essential
+2) Adaptation requires both courage and strategic thinking
+3) Results come from balancing bold ideas with practical execution
+
+What's your perspective on ${topic}? I'd love to hear your thoughts in the comments.
+
+#Professional #Innovation #Growth`;
+}
+
+function nowIso(): string {
+  return new Date().toISOString();
 }
 
 serve(async (req) => {
+  // CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    const { message, history, agentSettings, userContext } = await req.json();
+    const body = await req.json().catch(() => ({}));
+    const message: string = String(body?.message ?? "");
 
-    const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
-    if (!lovableApiKey) {
-      throw new Error("LOVABLE_API_KEY not configured");
+    console.log("agent-chat received:", message);
+
+    const lower = message.trim().toLowerCase();
+
+    // Default response shape expected by the frontend hook:
+    // { type, message, posts, topic }
+
+    if (!message.trim()) {
+      return new Response(
+        JSON.stringify({
+          type: "message",
+          message: "Please type a message to continue.",
+          posts: [],
+          topic: null,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    const settings: AgentSettings = agentSettings || { type: "professional", tone: "conversational", emojiLevel: 2, postLength: "medium" };
-    const agentConfig = AGENT_TYPE_PROMPTS[settings.type] || AGENT_TYPE_PROMPTS.professional;
-
-    // Build system prompt - SIMPLE: only generate posts, never claim to post
-    const systemPrompt = `You are a LinkedIn content creation assistant.
-
-${agentConfig.personality}
-
-${agentConfig.guidelines.map(g => `- ${g}`).join('\n')}
-
-${getPostLengthGuideline(settings.postLength)}
-${getEmojiGuideline(settings.emojiLevel)}
-
-CRITICAL RULES:
-1. When user asks to create/write/generate a post:
-   - Generate the LinkedIn post content directly
-   - Include relevant hashtags
-   - The post should be ready to publish
-
-2. When user says "post it" or "publish it":
-   - Tell them: "Click the 'Post Now' button next to the post in the Generated Posts panel."
-   - You DO NOT have the ability to post directly.
-
-3. NEVER say:
-   - "I will post it now"
-   - "Posting to LinkedIn..."
-   - "Your post is live"
-   - Any LinkedIn URLs
-
-4. Keep posts professional, engaging, and suitable for LinkedIn.
-5. Do NOT mention LinkedBot or any brand names in posts - keep them neutral.
-6. Write as if YOU are the person posting (first person).`;
-
-    const messages = [
-      { role: "system", content: systemPrompt },
-      ...(history || []).slice(-10),
-      { role: "user", content: message }
-    ];
-
-    // Check if this is a post generation request
-    const isGeneration = isPostGenerationRequest(message);
-    const topic = extractTopicFromMessage(message);
-
-    // Call Lovable AI using the correct endpoint
-    const response = await fetch("https://lovable.dev/api/llm/chat", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${lovableApiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "openai/gpt-4o-mini",
-        messages: messages,
-        max_tokens: 2048,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("API Error:", response.status, errorText);
-      throw new Error(`API error: ${response.status} - ${errorText}`);
+    if (isGreeting(lower)) {
+      return new Response(
+        JSON.stringify({
+          type: "message",
+          message:
+            "Hello! I can help you draft LinkedIn posts.\n\nTry: 'Write a post about AI trends' or 'Create a post about leadership'.",
+          posts: [],
+          topic: null,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    const data = await response.json();
-    const assistantMessage = data.choices?.[0]?.message?.content || data.content || "I encountered an issue. Please try again.";
+    if (isPostNowRequest(lower)) {
+      return new Response(
+        JSON.stringify({
+          type: "message",
+          message:
+            "Please click the 'Post Now' button next to the post in the Generated Posts panel to publish it.",
+          posts: [],
+          topic: null,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
-    // If this was a generation request, structure it as posts
-    let responseType = "message";
-    let posts: any[] = [];
+    if (isPostRequest(lower)) {
+      const topic = extractTopic(message);
+      const draft = buildDraft(topic);
+      const ts = nowIso();
 
-    if (isGeneration && topic) {
-      posts = [{
+      const post = {
         id: `post-${Date.now()}`,
-        content: assistantMessage,
-        suggestedTime: getNextOptimalTime(),
-        reasoning: `Generated ${settings.type} style post about "${topic}"`,
-        scheduledDateTime: getNextOptimalTime(),
+        content: draft,
+        suggestedTime: ts,
+        reasoning: `Generated a draft about "${topic}"`,
+        scheduledDateTime: ts,
         generateImage: false,
         imagePrompt: `Professional LinkedIn visual for: ${topic}`,
-      }];
-      
-      responseType = "posts_generated";
+      };
+
+      return new Response(
+        JSON.stringify({
+          type: "posts_generated",
+          message:
+            `I've created a draft about ${topic}.\n\nYou can see it in the Generated Posts panel. Click 'Post Now' when you're ready to publish.`,
+          posts: [post],
+          topic,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    return new Response(
-      JSON.stringify({
-        type: responseType,
-        message: assistantMessage,
-        posts: posts,
-        topic: topic,
-      }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-
-  } catch (error: unknown) {
-    console.error("Agent error:", error);
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    // Fallback
     return new Response(
       JSON.stringify({
         type: "message",
-        message: "I encountered an error. Please try again.",
+        message: `I understand you want to discuss: "${message}"\n\nIf you'd like, I can turn that into a LinkedIn post—just say “write a post about ${message}”.`,
+        posts: [],
+        topic: null,
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error: unknown) {
+    console.error("agent-chat error:", error);
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+
+    // IMPORTANT: return 200 so the frontend doesn't treat it as a function failure
+    return new Response(
+      JSON.stringify({
+        type: "message",
+        message: "Sorry, I encountered an error. Please try again.",
+        posts: [],
+        topic: null,
         error: errorMessage,
       }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     );
   }
 });
-
-function getNextOptimalTime(): string {
-  const now = new Date();
-  const scheduled = new Date(now);
-  scheduled.setHours(9, 0, 0, 0);
-  
-  if (now.getHours() >= 9 || now.getDay() === 0 || now.getDay() === 6) {
-    scheduled.setDate(scheduled.getDate() + 1);
-  }
-  
-  while (scheduled.getDay() === 0 || scheduled.getDay() === 6) {
-    scheduled.setDate(scheduled.getDate() + 1);
-  }
-  
-  return scheduled.toISOString();
-}
