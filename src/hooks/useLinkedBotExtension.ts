@@ -155,8 +155,14 @@ export const useLinkedBotExtension = () => {
 
   // Post immediately with enhanced error handling
   const postNow = useCallback(async (post: Post): Promise<{ success: boolean; error?: string; linkedinPostId?: string }> => {
+    console.log('=== useLinkedBotExtension.postNow CALLED ===');
+    console.log('Post:', post);
+    console.log('Extension available:', typeof window.LinkedBotExtension !== 'undefined');
+    console.log('Status:', status);
+    
     // GATE 1: Extension must be available
     if (typeof window.LinkedBotExtension === 'undefined') {
+      console.error('❌ GATE 1 FAILED: Extension not installed');
       return { 
         success: false, 
         error: 'Extension not installed. Please install the LinkedBot Chrome extension first.' 
@@ -165,6 +171,7 @@ export const useLinkedBotExtension = () => {
 
     // GATE 2: Must be connected
     if (!status.isConnected) {
+      console.error('❌ GATE 2 FAILED: Extension not connected');
       return { 
         success: false, 
         error: 'Extension not connected. Please connect from the Dashboard first.' 
@@ -173,23 +180,32 @@ export const useLinkedBotExtension = () => {
 
     // GATE 3: Post must have content
     if (!post.content || post.content.trim() === '') {
+      console.error('❌ GATE 3 FAILED: Post content is empty');
       return { 
         success: false, 
         error: 'Post content is empty. Generate a post first.' 
       };
     }
 
+    console.log('✅ All gates passed, calling extension...');
+
     try {
       // Re-check connection status before posting
+      console.log('Re-checking extension connection status...');
       const statusCheck = await window.LinkedBotExtension.checkStatus();
+      console.log('Status check result:', statusCheck);
+      
       if (!statusCheck.connected) {
+        console.error('❌ Extension disconnected during posting');
         return { 
           success: false, 
           error: 'Extension disconnected. Please reconnect from the Dashboard.' 
         };
       }
 
+      console.log('📤 Calling window.LinkedBotExtension.postNow()...');
       const result = await window.LinkedBotExtension.postNow(post);
+      console.log('📥 Extension postNow result:', result);
       
       // Handle extension-specific errors with user-friendly messages
       if (!result.success && result.error) {

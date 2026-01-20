@@ -168,30 +168,39 @@ const AgentsPage = () => {
   };
 
   const postSingleNow = async (post: { id: string; content: string; imageUrl?: string }) => {
+    console.log('=== postSingleNow CALLED ===');
+    console.log('Post to publish:', post);
+    
     // HARD GATE #1: Validate post exists with content
     const validation = validatePostForPublishing(post);
     if (!validation.valid) {
+      console.error('❌ Validation failed:', validation.error);
       toast.error(validation.error!);
       addActivityEntry("failed", validation.error!, post?.id);
       return;
     }
+    console.log('✅ Post validation passed');
 
     // HARD GATE #2: Extension must be connected
     if (!isExtensionConnected) {
+      console.error('❌ Extension not connected');
       toast.error("Chrome extension not connected. Please connect from Dashboard first.");
       addActivityEntry("failed", "Extension not connected", post.id);
       return;
     }
+    console.log('✅ Extension is connected');
 
     setIsPostingNow(true);
     addActivityEntry("sending", "Sending to extension...", post.id);
     
+    console.log('📤 Calling postNow()...');
     const result = await postNow({
       id: post.id,
       content: post.content,
       photo_url: post.imageUrl,
       scheduled_time: new Date().toISOString(),
     });
+    console.log('📥 postNow result:', result);
 
     if (result?.success) {
       // DO NOT show success toast here - wait for extension published event
@@ -200,6 +209,7 @@ const AgentsPage = () => {
     } else {
       // Show specific, user-friendly error from extension
       const errorMsg = result?.error || "Extension rejected the post";
+      console.error('❌ Posting failed:', errorMsg);
       addActivityEntry("failed", errorMsg, post.id);
       toast.error(errorMsg);
     }
@@ -332,22 +342,30 @@ const AgentsPage = () => {
 
     // Handle post_now response - ONLY post if we have valid posts
     if (result?.type === "post_now") {
+      console.log('=== POST_NOW ACTION RECEIVED FROM AGENT ===');
+      console.log('Generated posts available:', generatedPosts.length);
+      
       setAwaitingScheduleTime(false);
       setPendingTopic(null);
       
       if (generatedPosts.length === 0) {
+        console.error('❌ No posts exist - blocking post_now action');
         addActivityEntry("failed", "Agent returned post_now but no posts exist - blocked", undefined);
         return;
       }
       
       const first = generatedPosts[0];
+      console.log('First post to publish:', first);
+      
       const validation = validatePostForPublishing(first);
       if (!validation.valid) {
+        console.error('❌ Post validation failed:', validation.error);
         addActivityEntry("failed", validation.error!, first?.id);
         toast.error(validation.error!);
         return;
       }
       
+      console.log('✅ Validation passed, calling postSingleNow...');
       await postSingleNow(first);
       return;
     }
