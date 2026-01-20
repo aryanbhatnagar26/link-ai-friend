@@ -30,116 +30,54 @@ export interface AgentSettings {
 export interface UserContext {
   name?: string;
   industry?: string;
-  company?: string;
-  background?: string;
 }
 
-export type AgentChatResponse =
-  | { type: "message"; message: string }
-  | { type: "posts_generated"; message: string; posts: GeneratedPost[]; topic?: string }
-  | { type: "post_now"; message: string }
-  | { type: "schedule_post"; message: string; scheduledTime: string }
-  | { type: "ask_schedule"; message: string }
-  | { type: "ask_count"; message: string; topic: string };
-
-interface UseAgentChatReturn {
-  messages: ChatMessage[];
-  isLoading: boolean;
-  generatedPosts: GeneratedPost[];
-  sendMessage: (message: string, hasGeneratedPosts?: boolean) => Promise<AgentChatResponse | null>;
-  resetChat: () => void;
-  updatePost: (postId: string, updates: Partial<GeneratedPost>) => void;
-  deletePost: (postId: string) => void;
-  regeneratePost: (postId: string, agentSettings: AgentSettings, userContext: UserContext) => Promise<void>;
-  generateImageForPost: (postId: string) => Promise<void>;
-}
-
-// Agent type specific welcome messages with sample topics
+// Agent type specific welcome messages
 const agentWelcomeMessages: Record<string, { intro: string; samples: string[] }> = {
-  "comedy": {
-    intro: "Ready to make your network laugh! 😄 I specialize in witty, humorous content that entertains while delivering value.",
-    samples: [
-      "Monday motivation (with a twist)",
-      "Tech industry stereotypes",
-      "Office culture observations",
-      "Work-from-home fails"
-    ]
+  comedy: {
+    intro: "Ready to make your network laugh! 😄 I specialize in witty, humorous content.",
+    samples: ["Monday motivation (with a twist)", "Tech industry stereotypes", "Office culture observations"]
   },
-  "professional": {
+  professional: {
     intro: "I'll help you craft polished, industry-focused content that positions you as a thought leader.",
-    samples: [
-      "Industry best practices",
-      "Leadership lessons learned",
-      "Career growth strategies",
-      "Professional development tips"
-    ]
+    samples: ["Industry best practices", "Leadership lessons learned", "Career growth strategies"]
   },
-  "storytelling": {
-    intro: "Let's turn your experiences into compelling narratives! 📖 I craft story-driven posts that connect emotionally.",
-    samples: [
-      "Your career journey moments",
-      "Lessons from failure",
-      "Behind-the-scenes at work",
-      "A mentor who changed your path"
-    ]
+  storytelling: {
+    intro: "Let's turn your experiences into compelling narratives! 📖",
+    samples: ["Your career journey moments", "Lessons from failure", "A mentor who changed your path"]
   },
   "thought-leadership": {
-    intro: "Time to share bold ideas! 💡 I help you craft contrarian takes and expert opinions that spark discussion.",
-    samples: [
-      "Unpopular industry opinions",
-      "Future predictions for your field",
-      "Why common advice is wrong",
-      "What most people miss about..."
-    ]
+    intro: "Time to share bold ideas! 💡 I help you craft contrarian takes.",
+    samples: ["Unpopular industry opinions", "Future predictions for your field", "What most people miss about..."]
   },
-  "motivational": {
-    intro: "Let's inspire your network! ✨ I create uplifting content that encourages and empowers others.",
-    samples: [
-      "Overcoming challenges",
-      "Celebrating small wins",
-      "Mindset shifts that changed everything",
-      "Advice for your younger self"
-    ]
+  motivational: {
+    intro: "Let's inspire your network! ✨",
+    samples: ["Overcoming challenges", "Celebrating small wins", "Advice for your younger self"]
   },
   "data-analytics": {
-    intro: "Let's make your insights data-driven! 📊 I craft posts backed by statistics and research.",
-    samples: [
-      "Industry statistics breakdown",
-      "Market trends analysis",
-      "Research findings in your field",
-      "Data-backed predictions"
-    ]
+    intro: "Let's make your insights data-driven! 📊",
+    samples: ["Industry statistics breakdown", "Market trends analysis", "Data-backed predictions"]
   },
-  "creative": {
-    intro: "Time to get creative! 🎨 I help you craft visually-oriented, design-focused content.",
-    samples: [
-      "Design thinking in action",
-      "Creative process insights",
-      "Visual trends in your industry",
-      "Innovation and creativity tips"
-    ]
+  creative: {
+    intro: "Time to get creative! 🎨",
+    samples: ["Design thinking in action", "Creative process insights", "Innovation tips"]
   },
-  "news": {
-    intro: "Stay current and relevant! 📰 I help you share timely updates and industry news.",
-    samples: [
-      "Breaking industry news",
-      "Company announcements",
-      "Event recaps",
-      "Weekly industry roundup"
-    ]
+  news: {
+    intro: "Stay current and relevant! 📰",
+    samples: ["Breaking industry news", "Company announcements", "Weekly industry roundup"]
   }
 };
 
 function getInitialMessage(agentType: string): ChatMessage {
-  const config = agentWelcomeMessages[agentType] || agentWelcomeMessages["professional"];
+  const config = agentWelcomeMessages[agentType] || agentWelcomeMessages.professional;
   
   return {
     role: "assistant",
-    content: `Hi — I’m your LinkedIn posting agent. ${config.intro}
+    content: `Hi — I'm your LinkedIn posting agent. ${config.intro}
 
-Tell me what you want to write (and how many posts you need).
+Tell me what you want to write about, and I'll create posts for you.
 
-**Sample topics for this style:**
+**Sample topics:**
 ${config.samples.map(s => `• ${s}`).join('\n')}
 
 What should we write about?`,
@@ -149,39 +87,32 @@ What should we write about?`,
 export function useAgentChat(
   agentSettings: AgentSettings,
   userContext: UserContext = {}
-): UseAgentChatReturn {
+) {
   const [messages, setMessages] = useState<ChatMessage[]>(() => [getInitialMessage(agentSettings.type)]);
   const [isLoading, setIsLoading] = useState(false);
   const [generatedPosts, setGeneratedPosts] = useState<GeneratedPost[]>([]);
 
-  const sendMessage = useCallback(async (message: string, hasGeneratedPosts: boolean = false): Promise<AgentChatResponse | null> => {
-    if (!message.trim() || isLoading) return null;
+  const sendMessage = useCallback(async (message: string): Promise<void> => {
+    if (!message.trim() || isLoading) return;
 
     console.log('=== useAgentChat.sendMessage ===');
     console.log('Message:', message);
-    console.log('Has generated posts:', hasGeneratedPosts);
-    console.log('Current generatedPosts count:', generatedPosts.length);
 
     const userMessage: ChatMessage = { role: "user", content: message };
-    const nextHistory = [...messages, userMessage];
-
-    setMessages(nextHistory);
+    setMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
 
     try {
-      console.log('Calling agent-chat edge function...');
       const { data, error } = await supabase.functions.invoke("agent-chat", {
         body: {
           message,
-          history: nextHistory,
+          history: [...messages, userMessage].slice(-10),
           agentSettings,
           userContext,
-          hasGeneratedPosts, // Pass to backend so it knows if posts exist
         },
       });
 
       console.log('Agent response:', data);
-      console.log('Agent error:', error);
 
       if (error) throw error;
       if (data.error) throw new Error(data.error);
@@ -191,46 +122,20 @@ export function useAgentChat(
         content: data.message,
       };
       setMessages(prev => [...prev, assistantMessage]);
-      
-      console.log('Response type:', data.type);
 
+      // If posts were generated, add them
       if (data.type === "posts_generated" && data.posts?.length > 0) {
         setGeneratedPosts(data.posts);
-        toast.success(`Created ${data.posts.length} posts about "${data.topic}"!`);
-        return { type: "posts_generated", message: data.message, posts: data.posts, topic: data.topic };
+        toast.success(`Created ${data.posts.length} post(s) about "${data.topic}"!`);
       }
-
-      if (data.type === "post_now") {
-        return { type: "post_now", message: data.message };
-      }
-
-      if (data.type === "schedule_post") {
-        return { type: "schedule_post", message: data.message, scheduledTime: data.scheduledTime };
-      }
-
-      if (data.type === "ask_schedule") {
-        return { type: "ask_schedule", message: data.message };
-      }
-
-      if (data.type === "ask_count") {
-        return { type: "ask_count", message: data.message, topic: data.topic };
-      }
-
-      return { type: "message", message: data.message };
 
     } catch (error: any) {
       console.error("Chat error:", error);
-      
-      let errorMessage = "Sorry, I encountered an error. Please try again.";
-      if (error.message?.includes("Rate limits")) {
-        errorMessage = "I'm getting too many requests. Please wait a moment and try again.";
-      } else if (error.message?.includes("credits")) {
-        errorMessage = "AI credits are low. Please add more credits in settings.";
-      }
-      
-      setMessages(prev => [...prev, { role: "assistant", content: errorMessage }]);
+      setMessages(prev => [...prev, { 
+        role: "assistant", 
+        content: "Sorry, I encountered an error. Please try again." 
+      }]);
       toast.error(error.message || "Failed to send message");
-      return null;
     } finally {
       setIsLoading(false);
     }
@@ -267,7 +172,7 @@ export function useAgentChat(
     try {
       const { data, error } = await supabase.functions.invoke("agent-chat", {
         body: {
-          message: `Regenerate a single post similar to this topic: ${post.content.substring(0, 100)}`,
+          message: `Regenerate a post similar to: ${post.content.substring(0, 100)}`,
           history: [],
           agentSettings: settings,
           userContext: context,
