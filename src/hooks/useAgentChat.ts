@@ -1,10 +1,11 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
+  timestamp?: Date;
 }
 
 export interface GeneratedPost {
@@ -31,6 +32,11 @@ export interface UserContext {
   name?: string;
   industry?: string;
 }
+
+// Storage keys for persistence
+const CHAT_STORAGE_KEY = "linkedbot_chat_history";
+const POSTS_STORAGE_KEY = "linkedbot_generated_posts";
+const MAX_STORED_MESSAGES = 30;
 
 // Agent type specific welcome messages
 const agentWelcomeMessages: Record<string, { intro: string; samples: string[] }> = {
@@ -73,32 +79,108 @@ function getInitialMessage(agentType: string): ChatMessage {
   
   return {
     role: "assistant",
-    content: `Hi — I'm your LinkedIn posting agent. ${config.intro}
+    content: `Hi — I'm your LinkedIn posting agent powered by AI. ${config.intro}
 
-Tell me what you want to write about, and I'll create posts for you.
+I can help you:
+• **Create posts** with real-time research
+• **Schedule** posts for optimal times
+• **Post immediately** to LinkedIn
 
 **Sample topics:**
 ${config.samples.map(s => `• ${s}`).join('\n')}
 
 What should we write about?`,
+    timestamp: new Date(),
   };
+}
+
+// Load from localStorage
+function loadStoredMessages(): ChatMessage[] {
+  try {
+    const stored = localStorage.getItem(CHAT_STORAGE_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      return parsed.map((msg: any) => ({
+        ...msg,
+        timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date(),
+      }));
+    }
+  } catch (error) {
+    console.error("Error loading chat history:", error);
+  }
+  return [];
+}
+
+function loadStoredPosts(): GeneratedPost[] {
+  try {
+    const stored = localStorage.getItem(POSTS_STORAGE_KEY);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (error) {
+    console.error("Error loading generated posts:", error);
+  }
+  return [];
 }
 
 export function useAgentChat(
   agentSettings: AgentSettings,
   userContext: UserContext = {}
 ) {
-  const [messages, setMessages] = useState<ChatMessage[]>(() => [getInitialMessage(agentSettings.type)]);
+  // Initialize with stored data or welcome message
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    const stored = loadStoredMessages();
+    if (stored.length > 0) {
+      console.log("📂 Loaded", stored.length, "messages from storage");
+      return stored;
+    }
+    return [getInitialMessage(agentSettings.type)];
+  });
+  
   const [isLoading, setIsLoading] = useState(false);
-  const [generatedPosts, setGeneratedPosts] = useState<GeneratedPost[]>([]);
+  
+  const [generatedPosts, setGeneratedPosts] = useState<GeneratedPost[]>(() => {
+    const stored = loadStoredPosts();
+    if (stored.length > 0) {
+      console.log("📂 Loaded", stored.length, "posts from storage");
+    }
+    return stored;
+  });
+
+  // Save messages to localStorage when they change
+  useEffect(() => {
+    if (messages.length > 0) {
+      try {
+        const messagesToStore = messages.slice(-MAX_STORED_MESSAGES);
+        localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messagesToStore));
+        console.log("💾 Saved", messagesToStore.length, "messages");
+      } catch (error) {
+        console.error("Error saving chat history:", error);
+      }
+    }
+  }, [messages]);
+
+  // Save posts to localStorage when they change
+  useEffect(() => {
+    try {
+      localStorage.setItem(POSTS_STORAGE_KEY, JSON.stringify(generatedPosts));
+      console.log("💾 Saved", generatedPosts.length, "posts");
+    } catch (error) {
+      console.error("Error saving posts:", error);
+    }
+  }, [generatedPosts]);
 
   const sendMessage = useCallback(async (message: string): Promise<void> => {
     if (!message.trim() || isLoading) return;
 
-    console.log('=== useAgentChat.sendMessage ===');
-    console.log('Message:', message);
+    console.log("=== useAgentChat.sendMessage ===");
+    console.log("Message:", message);
 
-    const userMessage: ChatMessage = { role: "user", content: message };
+    const userMessage: ChatMessage = { 
+      role: "user", 
+      content: message,
+      timestamp: new Date(),
+    };
     setMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
 
@@ -106,14 +188,17 @@ export function useAgentChat(
       const { data, error } = await supabase.functions.invoke("agent-chat", {
         body: {
           message,
-          history: [...messages, userMessage].slice(-10),
+          history: [...messages, userMessage].slice(-10).map(m => ({
+            role: m.role,
+            content: m.content,
+          })),
           agentSettings,
           userContext,
-          generatedPosts, // Pass current posts so agent knows if we have any
+          generatedPosts,
         },
       });
 
-      console.log('Agent response:', data);
+      console.log("Agent response:", data);
 
       if (error) throw error;
       if (data.error) throw new Error(data.error);
@@ -121,31 +206,40 @@ export function useAgentChat(
       const assistantMessage: ChatMessage = {
         role: "assistant",
         content: data.message,
+        timestamp: new Date(),
       };
       setMessages(prev => [...prev, assistantMessage]);
 
       // If posts were generated, add them
       if (data.type === "posts_generated" && data.posts?.length > 0) {
-        setGeneratedPosts(data.posts);
-        toast.success(`Created ${data.posts.length} post(s) about "${data.topic}"!`);
+        setGeneratedPosts(prev => [...data.posts, ...prev]);
+        toast.success(`Created ${data.posts.length} post(s)!`);
       }
 
     } catch (error: any) {
       console.error("Chat error:", error);
       setMessages(prev => [...prev, { 
         role: "assistant", 
-        content: "Sorry, I encountered an error. Please try again." 
+        content: `Sorry, I encountered an error: ${error.message || "Unknown error"}. Please try again.`,
+        timestamp: new Date(),
       }]);
       toast.error(error.message || "Failed to send message");
     } finally {
       setIsLoading(false);
     }
-  }, [messages, agentSettings, userContext, isLoading]);
+  }, [messages, agentSettings, userContext, isLoading, generatedPosts]);
 
   const resetChat = useCallback(() => {
     setMessages([getInitialMessage(agentSettings.type)]);
     setGeneratedPosts([]);
+    localStorage.removeItem(CHAT_STORAGE_KEY);
+    localStorage.removeItem(POSTS_STORAGE_KEY);
+    toast.success("Chat history cleared");
   }, [agentSettings.type]);
+
+  const clearHistory = useCallback(() => {
+    resetChat();
+  }, [resetChat]);
 
   const updatePost = useCallback((postId: string, updates: Partial<GeneratedPost>) => {
     setGeneratedPosts(prev =>
@@ -242,9 +336,11 @@ export function useAgentChat(
     generatedPosts,
     sendMessage,
     resetChat,
+    clearHistory,
     updatePost,
     deletePost,
     regeneratePost,
     generateImageForPost,
+    setGeneratedPosts,
   };
 }
