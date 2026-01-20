@@ -267,135 +267,40 @@ const AgentsPage = () => {
     }
   };
 
+  // SIMPLIFIED: Agent only generates posts. User clicks button to post.
   const handleSendMessage = async () => {
     if (!chatInput.trim() || isLoading) return;
 
     const message = chatInput.trim();
     setChatInput("");
 
-    // HARD GATE: Check for posting commands and block if no posts exist
+    // Check for posting commands - tell user to click the button
     const wantsPostNow =
       /\bpost(\s+it)?\s+now\b/i.test(message) ||
       /\bpublish(\s+it)?\s+now\b/i.test(message) ||
       /\bsend(\s+it)?\s+now\b/i.test(message);
 
-    const wantsSchedule =
-      /\bschedule(\s+it)?\b/i.test(message) ||
-      /\bpost(\s+it)?\s+at\b/i.test(message) ||
-      /\bgo\s+ahead\b/i.test(message);
-
-    // If user wants to post/schedule but NO posts exist → block immediately
-    if ((wantsPostNow || wantsSchedule) && generatedPosts.length === 0) {
-      // Don't call agent - just show error directly
-      const errorMsg = "I don't have a post ready yet. Tell me what topic you'd like to post about, and I'll create one for you.";
-      // Add as assistant message for context
-      addActivityEntry("failed", "No post to publish - blocked", undefined);
-      // Still send to agent so it responds properly in chat
-      await sendMessage(message);
-      return;
-    }
-
-    // If we're NOT waiting for schedule time and have posts, handle posting directly
-    if (!awaitingScheduleTime && generatedPosts.length > 0) {
-      const requestedScheduleIso = parseRequestedScheduleTimeIso(message);
-
-      if (wantsPostNow) {
-        const first = generatedPosts[0];
-        // Validate before posting
-        const validation = validatePostForPublishing(first);
-        if (!validation.valid) {
-          toast.error(validation.error!);
-          addActivityEntry("failed", validation.error!, first?.id);
-          return;
-        }
-        await postSingleNow(first);
-        return;
-      }
-
-      if (requestedScheduleIso) {
-        const first = generatedPosts[0];
-        const validation = validatePostForPublishing(first);
-        if (!validation.valid) {
-          toast.error(validation.error!);
-          addActivityEntry("failed", validation.error!, first?.id);
-          return;
-        }
-        await scheduleSingle(first, requestedScheduleIso);
-        return;
-      }
-    }
-
-    // Pass hasGeneratedPosts flag to agent so it can respond appropriately
-    const result = await sendMessage(message, generatedPosts.length > 0);
-
-    // Agent is asking for a time — next user message should be treated as the schedule time.
-    if (result?.type === "ask_schedule") {
-      setAwaitingScheduleTime(true);
-      return;
-    }
-
-    // Agent is asking how many posts
-    if (result?.type === "ask_count") {
-      setPendingTopic(result.topic);
-      return;
-    }
-
-    // Handle post_now response - ONLY post if we have valid posts
-    if (result?.type === "post_now") {
-      console.log('=== POST_NOW ACTION RECEIVED FROM AGENT ===');
-      console.log('Generated posts available:', generatedPosts.length);
-      
-      setAwaitingScheduleTime(false);
-      setPendingTopic(null);
-      
-      if (generatedPosts.length === 0) {
-        console.error('❌ No posts exist - blocking post_now action');
-        addActivityEntry("failed", "Agent returned post_now but no posts exist - blocked", undefined);
-        return;
-      }
-      
+    if (wantsPostNow && generatedPosts.length > 0) {
+      // User wants to post - do it directly!
       const first = generatedPosts[0];
-      console.log('First post to publish:', first);
-      
       const validation = validatePostForPublishing(first);
       if (!validation.valid) {
-        console.error('❌ Post validation failed:', validation.error);
-        addActivityEntry("failed", validation.error!, first?.id);
         toast.error(validation.error!);
+        addActivityEntry("failed", validation.error!, first?.id);
         return;
       }
-      
-      console.log('✅ Validation passed, calling postSingleNow...');
       await postSingleNow(first);
       return;
     }
 
-    // Handle schedule_post response - ONLY schedule if we have valid posts
-    if (result?.type === "schedule_post") {
-      setAwaitingScheduleTime(false);
-      setPendingTopic(null);
-      
-      if (generatedPosts.length === 0) {
-        addActivityEntry("failed", "Agent returned schedule_post but no posts exist - blocked", undefined);
-        return;
-      }
-      
-      const first = generatedPosts[0];
-      const validation = validatePostForPublishing(first);
-      if (!validation.valid) {
-        addActivityEntry("failed", validation.error!, first?.id);
-        toast.error(validation.error!);
-        return;
-      }
-      
-      await scheduleSingle(first, result.scheduledTime);
+    if (wantsPostNow && generatedPosts.length === 0) {
+      toast.error("No post to publish. Generate a post first!");
+      addActivityEntry("failed", "No post to publish - blocked", undefined);
       return;
     }
 
-    // If posts were generated, reset pending topic
-    if (result?.type === "posts_generated") {
-      setPendingTopic(null);
-    }
+    // Otherwise just send to agent for chat/generation
+    await sendMessage(message);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
