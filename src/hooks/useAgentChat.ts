@@ -157,6 +157,11 @@ export function useAgentChat(
   const sendMessage = useCallback(async (message: string, hasGeneratedPosts: boolean = false): Promise<AgentChatResponse | null> => {
     if (!message.trim() || isLoading) return null;
 
+    console.log('=== useAgentChat.sendMessage ===');
+    console.log('Message:', message);
+    console.log('Has generated posts:', hasGeneratedPosts);
+    console.log('Current generatedPosts count:', generatedPosts.length);
+
     const userMessage: ChatMessage = { role: "user", content: message };
     const nextHistory = [...messages, userMessage];
 
@@ -164,6 +169,7 @@ export function useAgentChat(
     setIsLoading(true);
 
     try {
+      console.log('Calling agent-chat edge function...');
       const { data, error } = await supabase.functions.invoke("agent-chat", {
         body: {
           message,
@@ -174,6 +180,9 @@ export function useAgentChat(
         },
       });
 
+      console.log('Agent response:', data);
+      console.log('Agent error:', error);
+
       if (error) throw error;
       if (data.error) throw new Error(data.error);
 
@@ -182,6 +191,8 @@ export function useAgentChat(
         content: data.message,
       };
       setMessages(prev => [...prev, assistantMessage]);
+      
+      console.log('Response type:', data.type);
 
       if (data.type === "posts_generated" && data.posts?.length > 0) {
         setGeneratedPosts(data.posts);
