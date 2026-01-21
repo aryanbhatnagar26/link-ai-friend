@@ -18,10 +18,20 @@ export interface UserProfile {
   background: string | null;
   posting_goals: string[] | null;
   linkedin_profile_url: string | null;
+  linkedin_profile_url_locked: boolean;
   linkedin_username: string | null;
   preferred_tone: string | null;
   post_frequency: string | null;
   onboarding_completed: boolean;
+  phone_number: string | null;
+  city: string | null;
+  country: string | null;
+  subscription_plan: string | null;
+  subscription_expires_at: string | null;
+  posts_created_count: number;
+  posts_scheduled_count: number;
+  posts_published_count: number;
+  last_active_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -41,6 +51,11 @@ export interface ProfileData {
   preferred_tone?: string;
   post_frequency?: string;
   onboarding_completed?: boolean;
+  linkedin_profile_url?: string;
+  linkedin_profile_url_locked?: boolean;
+  phone_number?: string;
+  city?: string;
+  country?: string;
 }
 
 export const useUserProfile = () => {
@@ -93,6 +108,7 @@ export const useUserProfile = () => {
         email: user.email,
         ...profileData,
         updated_at: new Date().toISOString(),
+        last_active_at: new Date().toISOString(),
       };
 
       const { data, error: saveError } = await supabase
@@ -123,9 +139,59 @@ export const useUserProfile = () => {
     });
   };
 
+  const updateLastActive = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      await supabase
+        .from("user_profiles")
+        .update({ last_active_at: new Date().toISOString() })
+        .eq("user_id", user.id);
+    } catch (err) {
+      console.error("Error updating last active:", err);
+    }
+  };
+
+  const incrementPostCount = async (type: 'created' | 'scheduled' | 'published') => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || !profile) return;
+
+      const columnMap = {
+        created: 'posts_created_count',
+        scheduled: 'posts_scheduled_count',
+        published: 'posts_published_count',
+      };
+
+      const column = columnMap[type];
+      const currentValue = profile[column as keyof UserProfile] as number || 0;
+
+      await supabase
+        .from("user_profiles")
+        .update({ [column]: currentValue + 1 })
+        .eq("user_id", user.id);
+
+      // Update local state
+      setProfile({
+        ...profile,
+        [column]: currentValue + 1,
+      });
+    } catch (err) {
+      console.error("Error incrementing post count:", err);
+    }
+  };
+
   useEffect(() => {
     fetchProfile();
   }, []);
+
+  // Update last active on mount
+  useEffect(() => {
+    if (profile) {
+      updateLastActive();
+    }
+  }, [profile?.id]);
 
   return {
     profile,
@@ -134,5 +200,7 @@ export const useUserProfile = () => {
     fetchProfile,
     saveProfile,
     completeOnboarding,
+    updateLastActive,
+    incrementPostCount,
   };
 };

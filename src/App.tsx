@@ -11,6 +11,8 @@ import Agents from "./pages/Agents";
 import CalendarPage from "./pages/CalendarPage";
 import Analytics from "./pages/Analytics";
 import LinkedInConnection from "./pages/LinkedInConnection";
+import Settings from "./pages/Settings";
+import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +32,8 @@ const App = () => (
           <Route path="/dashboard/calendar" element={<CalendarPage />} />
           <Route path="/dashboard/analytics" element={<Analytics />} />
           <Route path="/dashboard/linkedin" element={<LinkedInConnection />} />
+          <Route path="/dashboard/settings" element={<Settings />} />
+          <Route path="/dashboard/admin" element={<Admin />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

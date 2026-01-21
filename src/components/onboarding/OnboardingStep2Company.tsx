@@ -1,9 +1,10 @@
 import { motion } from "framer-motion";
-import { ArrowRight, ArrowLeft, X } from "lucide-react";
+import { ArrowRight, ArrowLeft, X, Linkedin, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Select,
   SelectContent,
@@ -36,6 +37,14 @@ interface OnboardingStep2CompanyProps {
   setTargetAudience: (value: string) => void;
   location: string;
   setLocation: (value: string) => void;
+  linkedinUrl: string;
+  setLinkedinUrl: (value: string) => void;
+  phoneNumber: string;
+  setPhoneNumber: (value: string) => void;
+  city: string;
+  setCity: (value: string) => void;
+  country: string;
+  setCountry: (value: string) => void;
   topics: string[];
   setTopics: (topics: string[]) => void;
   topicInput: string;
@@ -55,6 +64,14 @@ export const OnboardingStep2Company = ({
   setTargetAudience,
   location,
   setLocation,
+  linkedinUrl,
+  setLinkedinUrl,
+  phoneNumber,
+  setPhoneNumber,
+  city,
+  setCity,
+  country,
+  setCountry,
   topics,
   setTopics,
   topicInput,
@@ -80,7 +97,14 @@ export const OnboardingStep2Company = ({
     }
   };
 
-  const canProceed = companyName && industry && companyDescription;
+  // Validate LinkedIn URL format
+  const isValidLinkedInUrl = (url: string) => {
+    if (!url) return false;
+    const pattern = /^https?:\/\/(www\.)?linkedin\.com\/(in|company)\/[\w-]+\/?$/i;
+    return pattern.test(url.trim());
+  };
+
+  const canProceed = companyName && industry && companyDescription && isValidLinkedInUrl(linkedinUrl);
 
   return (
     <motion.div
@@ -101,6 +125,33 @@ export const OnboardingStep2Company = ({
             placeholder="e.g., Acme Inc."
             className="mt-1.5"
           />
+        </div>
+
+        {/* LinkedIn Profile URL - CRITICAL FIELD */}
+        <div>
+          <Label htmlFor="linkedinUrl" className="flex items-center gap-2">
+            <Linkedin className="w-4 h-4 text-[#0A66C2]" />
+            LinkedIn Profile/Company URL *
+          </Label>
+          <Input
+            id="linkedinUrl"
+            value={linkedinUrl}
+            onChange={(e) => setLinkedinUrl(e.target.value)}
+            placeholder="https://linkedin.com/in/your-profile or /company/your-company"
+            className="mt-1.5"
+          />
+          {linkedinUrl && !isValidLinkedInUrl(linkedinUrl) && (
+            <p className="text-xs text-destructive mt-1 flex items-center gap-1">
+              <AlertCircle className="w-3 h-3" />
+              Please enter a valid LinkedIn URL (e.g., https://linkedin.com/in/username or /company/name)
+            </p>
+          )}
+          <Alert className="mt-2 border-warning/50 bg-warning/10">
+            <AlertCircle className="w-4 h-4 text-warning" />
+            <AlertDescription className="text-xs text-warning">
+              <strong>Important:</strong> This URL cannot be changed after setup. All posting and scraping will happen on this profile only.
+            </AlertDescription>
+          </Alert>
         </div>
 
         <div>
@@ -134,26 +185,50 @@ export const OnboardingStep2Company = ({
           </p>
         </div>
 
-        <div>
-          <Label htmlFor="audience">Target Audience</Label>
-          <Input
-            id="audience"
-            value={targetAudience}
-            onChange={(e) => setTargetAudience(e.target.value)}
-            placeholder="e.g., CTOs at tech startups"
-            className="mt-1.5"
-          />
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="phoneNumber">Contact Phone</Label>
+            <Input
+              id="phoneNumber"
+              value={phoneNumber}
+              onChange={(e) => setPhoneNumber(e.target.value)}
+              placeholder="+91 9876543210"
+              className="mt-1.5"
+            />
+          </div>
+          <div>
+            <Label htmlFor="city">City</Label>
+            <Input
+              id="city"
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              placeholder="e.g., Mumbai"
+              className="mt-1.5"
+            />
+          </div>
         </div>
 
-        <div>
-          <Label htmlFor="location">City/Location</Label>
-          <Input
-            id="location"
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-            placeholder="e.g., San Francisco, CA"
-            className="mt-1.5"
-          />
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="country">Country</Label>
+            <Input
+              id="country"
+              value={country}
+              onChange={(e) => setCountry(e.target.value)}
+              placeholder="e.g., India"
+              className="mt-1.5"
+            />
+          </div>
+          <div>
+            <Label htmlFor="audience">Target Audience</Label>
+            <Input
+              id="audience"
+              value={targetAudience}
+              onChange={(e) => setTargetAudience(e.target.value)}
+              placeholder="e.g., CTOs at startups"
+              className="mt-1.5"
+            />
+          </div>
         </div>
 
         <div>
@@ -202,7 +277,7 @@ export const OnboardingStep2Company = ({
           onClick={onNext}
           className="gap-2"
         >
-          Continue
+          Complete Setup
           <ArrowRight className="w-4 h-4" />
         </Button>
       </div>

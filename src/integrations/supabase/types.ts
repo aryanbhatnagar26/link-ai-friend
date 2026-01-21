@@ -188,22 +188,32 @@ export type Database = {
       user_profiles: {
         Row: {
           background: string | null
+          city: string | null
           company_description: string | null
           company_name: string | null
+          country: string | null
           created_at: string
           default_topics: string[] | null
           email: string | null
           id: string
           industry: string | null
+          last_active_at: string | null
           linkedin_profile_url: string | null
+          linkedin_profile_url_locked: boolean | null
           linkedin_username: string | null
           location: string | null
           name: string | null
           onboarding_completed: boolean | null
+          phone_number: string | null
           post_frequency: string | null
           posting_goals: string[] | null
+          posts_created_count: number | null
+          posts_published_count: number | null
+          posts_scheduled_count: number | null
           preferred_tone: string | null
           role: string | null
+          subscription_expires_at: string | null
+          subscription_plan: string | null
           target_audience: string | null
           updated_at: string
           user_id: string
@@ -211,22 +221,32 @@ export type Database = {
         }
         Insert: {
           background?: string | null
+          city?: string | null
           company_description?: string | null
           company_name?: string | null
+          country?: string | null
           created_at?: string
           default_topics?: string[] | null
           email?: string | null
           id?: string
           industry?: string | null
+          last_active_at?: string | null
           linkedin_profile_url?: string | null
+          linkedin_profile_url_locked?: boolean | null
           linkedin_username?: string | null
           location?: string | null
           name?: string | null
           onboarding_completed?: boolean | null
+          phone_number?: string | null
           post_frequency?: string | null
           posting_goals?: string[] | null
+          posts_created_count?: number | null
+          posts_published_count?: number | null
+          posts_scheduled_count?: number | null
           preferred_tone?: string | null
           role?: string | null
+          subscription_expires_at?: string | null
+          subscription_plan?: string | null
           target_audience?: string | null
           updated_at?: string
           user_id: string
@@ -234,26 +254,57 @@ export type Database = {
         }
         Update: {
           background?: string | null
+          city?: string | null
           company_description?: string | null
           company_name?: string | null
+          country?: string | null
           created_at?: string
           default_topics?: string[] | null
           email?: string | null
           id?: string
           industry?: string | null
+          last_active_at?: string | null
           linkedin_profile_url?: string | null
+          linkedin_profile_url_locked?: boolean | null
           linkedin_username?: string | null
           location?: string | null
           name?: string | null
           onboarding_completed?: boolean | null
+          phone_number?: string | null
           post_frequency?: string | null
           posting_goals?: string[] | null
+          posts_created_count?: number | null
+          posts_published_count?: number | null
+          posts_scheduled_count?: number | null
           preferred_tone?: string | null
           role?: string | null
+          subscription_expires_at?: string | null
+          subscription_plan?: string | null
           target_audience?: string | null
           updated_at?: string
           user_id?: string
           user_type?: string | null
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
         }
         Relationships: []
       }
@@ -301,10 +352,41 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_admin_users_data: {
+        Args: never
+        Returns: {
+          city: string
+          company_name: string
+          country: string
+          created_at: string
+          email: string
+          followers_count: number
+          id: string
+          industry: string
+          last_active_at: string
+          linkedin_profile_url: string
+          name: string
+          onboarding_completed: boolean
+          phone_number: string
+          posts_created_count: number
+          posts_published_count: number
+          posts_scheduled_count: number
+          role: string
+          subscription_expires_at: string
+          subscription_plan: string
+          user_id: string
+        }[]
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "moderator" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -431,6 +513,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "moderator", "user"],
+    },
   },
 } as const
