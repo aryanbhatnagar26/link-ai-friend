@@ -8,7 +8,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { OnboardingStep1 } from "@/components/onboarding/OnboardingStep1";
 import { OnboardingStep2Company } from "@/components/onboarding/OnboardingStep2Company";
 import { OnboardingStep2Personal } from "@/components/onboarding/OnboardingStep2Personal";
-import { OnboardingStep3 } from "@/components/onboarding/OnboardingStep3";
 
 const Onboarding = () => {
   const [checkingAuth, setCheckingAuth] = useState(true);
@@ -51,6 +50,12 @@ const Onboarding = () => {
   const [topics, setTopics] = useState<string[]>([]);
   const [topicInput, setTopicInput] = useState("");
   const [selectedGoals, setSelectedGoals] = useState<string[]>([]);
+  
+  // Common fields
+  const [linkedinUrl, setLinkedinUrl] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [city, setCity] = useState("");
+  const [country, setCountry] = useState("");
 
   // Company form state
   const [companyName, setCompanyName] = useState("");
@@ -71,6 +76,11 @@ const Onboarding = () => {
       const profileData = {
         user_type: accountType,
         default_topics: topics,
+        linkedin_profile_url: linkedinUrl,
+        linkedin_profile_url_locked: true, // Lock the URL after save
+        phone_number: phoneNumber,
+        city,
+        country,
         ...(accountType === "company"
           ? {
               name: companyName,
@@ -134,13 +144,13 @@ const Onboarding = () => {
           </p>
         </div>
 
-        {/* Progress indicator */}
+        {/* Progress indicator - Now only 2 steps */}
         <div className="flex items-center justify-center gap-2 mb-8">
-          {[1, 2, 3].map((s) => (
+          {[1, 2].map((s) => (
             <div
               key={s}
               className={`h-2 rounded-full transition-all duration-300 ${
-                s <= step ? "w-12 gradient-bg" : "w-8 bg-muted"
+                s <= step ? "w-16 gradient-bg" : "w-12 bg-muted"
               }`}
             />
           ))}
@@ -169,12 +179,20 @@ const Onboarding = () => {
                 setTargetAudience={setTargetAudience}
                 location={location}
                 setLocation={setLocation}
+                linkedinUrl={linkedinUrl}
+                setLinkedinUrl={setLinkedinUrl}
+                phoneNumber={phoneNumber}
+                setPhoneNumber={setPhoneNumber}
+                city={city}
+                setCity={setCity}
+                country={country}
+                setCountry={setCountry}
                 topics={topics}
                 setTopics={setTopics}
                 topicInput={topicInput}
                 setTopicInput={setTopicInput}
                 onBack={() => setStep(1)}
-                onNext={() => setStep(3)}
+                onNext={handleComplete}
               />
             )}
 
@@ -186,6 +204,14 @@ const Onboarding = () => {
                 setProfession={setProfession}
                 background={background}
                 setBackground={setBackground}
+                linkedinUrl={linkedinUrl}
+                setLinkedinUrl={setLinkedinUrl}
+                phoneNumber={phoneNumber}
+                setPhoneNumber={setPhoneNumber}
+                city={city}
+                setCity={setCity}
+                country={country}
+                setCountry={setCountry}
                 topics={topics}
                 setTopics={setTopics}
                 topicInput={topicInput}
@@ -193,19 +219,20 @@ const Onboarding = () => {
                 selectedGoals={selectedGoals}
                 setSelectedGoals={setSelectedGoals}
                 onBack={() => setStep(1)}
-                onNext={() => setStep(3)}
-              />
-            )}
-
-            {step === 3 && (
-              <OnboardingStep3
-                onBack={() => setStep(2)}
-                onComplete={handleComplete}
-                isSaving={isSaving}
+                onNext={handleComplete}
               />
             )}
           </AnimatePresence>
         </div>
+
+        {isSaving && (
+          <div className="fixed inset-0 bg-background/80 flex items-center justify-center z-50">
+            <div className="flex flex-col items-center gap-4">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              <p className="text-muted-foreground">Setting up your account...</p>
+            </div>
+          </div>
+        )}
       </motion.div>
     </div>
   );
