@@ -26,6 +26,7 @@ import { SchedulingDialog } from "@/components/agents/SchedulingDialog";
 import { toast } from "sonner";
 import { useLinkedBotExtension } from "@/hooks/useLinkedBotExtension";
 import { useImageUpload } from "@/hooks/useImageUpload";
+import { supabase } from "@/integrations/supabase/client";
 
 const agentTypes = [
   { id: "comedy", label: "Comedy/Humorous" },
@@ -256,20 +257,33 @@ const AgentChatPage = () => {
       }, scheduledTime);
       
       if (savedPost) {
-        // Send to extension immediately
+        // Send to extension immediately with proper format including trackingId
         addActivityEntry("sending", `Scheduling for ${format(scheduledTime, 'MMM d, h:mm a')}...`, savedPost.id);
         
-        const result = await sendPendingPosts([{
+        // Extension expects: id, trackingId, content, imageUrl, scheduledTime, userId
+        const postForExtension = {
           id: savedPost.dbId || savedPost.id,
+          trackingId: savedPost.trackingId, // CRITICAL: Extension uses this for alarm name
           content: savedPost.content,
-          photo_url: savedPost.imageUrl,
+          imageUrl: savedPost.imageUrl, // Extension uses imageUrl, not photo_url
+          scheduledTime: savedPost.scheduledTime || scheduledTime.toISOString(), // Extension uses scheduledTime
+          photo_url: savedPost.imageUrl, // Also include for backwards compatibility
           scheduled_time: savedPost.scheduledTime || scheduledTime.toISOString(),
-        }]);
+        };
+        
+        console.log("📤 Sending to extension:", postForExtension);
+        
+        const result = await sendPendingPosts([postForExtension as any]);
         
         if (result.success) {
           addActivityEntry("scheduled", `Scheduled for ${format(scheduledTime, 'MMM d, h:mm a')}`, savedPost.id);
           toast.success(`✅ Post scheduled for ${format(scheduledTime, 'MMM d, h:mm a')}!`);
           updatePost(savedPost.id, { status: 'queued_in_extension' });
+          
+          // Update database to mark sent to extension
+          await supabase.from('posts').update({ 
+            sent_to_extension_at: new Date().toISOString() 
+          }).eq('id', savedPost.dbId || savedPost.id);
         } else {
           addActivityEntry("failed", result.error || "Failed to send to extension", savedPost.id);
           toast.error(result.error || "Failed to send to extension");
