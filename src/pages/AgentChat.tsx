@@ -5,6 +5,7 @@ import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Bot,
   ArrowLeft,
@@ -14,11 +15,13 @@ import {
   Linkedin,
   ImagePlus,
   RefreshCw,
+  AlertCircle,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useAgentChat, ChatMessage } from "@/hooks/useAgentChat";
 import { useAgents } from "@/hooks/useAgents";
 import { useUserProfile } from "@/hooks/useUserProfile";
+import { usePostingLimits } from "@/hooks/usePostingLimits";
 import { PostPreviewCard } from "@/components/agents/PostPreviewCard";
 import { ExtensionActivityLog, useExtensionActivityLog } from "@/components/agents/ExtensionActivityLog";
 import { ImageUploadPanel } from "@/components/agents/ImageUploadPanel";
@@ -110,6 +113,9 @@ const AgentChatPage = () => {
 
   const [isPostingNow, setIsPostingNow] = useState(false);
 
+  // Posting limits hook
+  const { canPost, limitMessage, incrementPostCount, status: limitsStatus } = usePostingLimits();
+
   // Extension activity log
   const { entries: activityEntries, addEntry: addActivityEntry, clearLog: clearActivityLog } = useExtensionActivityLog();
 
@@ -188,6 +194,12 @@ const AgentChatPage = () => {
     
     if (!hasText && !hasImages) return;
     if (isLoading || isUploadingImages) return;
+
+    // Check posting limits before generating content
+    if (!canPost) {
+      toast.error(limitMessage || "Posting limit reached. Upgrade your plan for more posts.");
+      return;
+    }
 
     const message = chatInput.trim();
     const imageUrls = getImageUrls();
@@ -381,6 +393,26 @@ const AgentChatPage = () => {
             </Button>
           </div>
         </motion.div>
+
+        {/* Posting Limits Banner */}
+        {limitsStatus && (
+          <div className="flex items-center gap-4 py-2 px-4 bg-muted/50 rounded-lg mt-2 text-sm">
+            <span className="text-muted-foreground">
+              Posts today: <strong>{limitsStatus.postsToday}/{limitsStatus.dailyLimit}</strong>
+            </span>
+            <span className="text-muted-foreground">
+              This month: <strong>{limitsStatus.postsThisMonth}/{limitsStatus.monthlyLimit}</strong>
+            </span>
+            {!canPost && (
+              <Alert variant="destructive" className="py-1 px-3 flex-1">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="text-xs ml-2">
+                  {limitMessage}
+                </AlertDescription>
+              </Alert>
+            )}
+          </div>
+        )}
 
         {/* Main content area */}
         <div className="flex-1 flex gap-6 min-h-0 pt-4">
