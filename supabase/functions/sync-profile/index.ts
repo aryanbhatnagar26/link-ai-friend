@@ -6,6 +6,19 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
+interface ProfileData {
+  username?: string;
+  profileUrl?: string;
+  followersCount?: number;
+  connectionsCount?: number;
+  fullName?: string;
+  headline?: string;
+  profilePhoto?: string;
+  currentRole?: string;
+  currentCompany?: string;
+  location?: string;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -19,10 +32,17 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { userId, profileData } = await req.json();
+    const { userId, profileData } = await req.json() as { userId: string; profileData: ProfileData };
 
     if (!userId) {
       return new Response(JSON.stringify({ error: 'userId required' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (!profileData || typeof profileData !== 'object') {
+      return new Response(JSON.stringify({ error: 'profileData required' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -33,12 +53,14 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Update user profile data
+    const now = new Date().toISOString();
+
+    // Update user profile data with full LinkedIn profile info
     const { error: updateError } = await supabase
       .from('user_profiles')
       .update({
         linkedin_profile_data: profileData,
-        profile_last_scraped: new Date().toISOString(),
+        profile_last_scraped: now,
       })
       .eq('user_id', userId);
 
@@ -48,8 +70,8 @@ Deno.serve(async (req) => {
     }
 
     // Also update linkedin_analytics if profile data contains follower info
-    if (profileData?.followersCount || profileData?.connectionsCount) {
-      await supabase
+    if (profileData.followersCount !== undefined || profileData.connectionsCount !== undefined) {
+      const { error: analyticsError } = await supabase
         .from('linkedin_analytics')
         .upsert({
           user_id: userId,
@@ -57,13 +79,24 @@ Deno.serve(async (req) => {
           connections_count: profileData.connectionsCount || 0,
           username: profileData.username || profileData.fullName,
           profile_url: profileData.profileUrl,
-          last_synced: new Date().toISOString(),
+          last_synced: now,
         }, {
           onConflict: 'user_id',
         });
+
+      if (analyticsError) {
+        console.warn('Analytics upsert warning:', analyticsError);
+        // Don't fail the whole request for analytics update
+      }
     }
 
-    return new Response(JSON.stringify({ success: true }), {
+    console.log(`✅ Profile synced for user ${userId}`);
+
+    return new Response(JSON.stringify({ 
+      success: true,
+      message: 'Profile data synced successfully',
+      syncedAt: now,
+    }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

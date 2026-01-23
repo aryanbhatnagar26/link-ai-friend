@@ -331,12 +331,40 @@ declare global {
       onEvent: (callback: (event: string, data: unknown) => void) => void;
       // Profile URL method
       saveProfileUrl?: (url: string) => Promise<{ success: boolean; error?: string }>;
+      // Profile scraping - navigates to profile URL and extracts data
+      scrapeProfile?: (profileUrl: string) => Promise<{
+        success: boolean;
+        error?: string;
+        data?: {
+          fullName?: string;
+          headline?: string;
+          profilePhoto?: string;
+          currentRole?: string;
+          currentCompany?: string;
+          location?: string;
+          followersCount?: number;
+          connectionsCount?: number;
+          profileUrl?: string;
+          username?: string;
+        };
+      }>;
       // Analytics methods
       scrapeAnalytics: () => Promise<{ 
         success: boolean; 
         error?: string; 
         data?: { 
-          profile: { username?: string; profileUrl?: string; followersCount?: number; connectionsCount?: number };
+          profile: { 
+            username?: string; 
+            profileUrl?: string; 
+            followersCount?: number; 
+            connectionsCount?: number;
+            fullName?: string;
+            headline?: string;
+            profilePhoto?: string;
+            currentRole?: string;
+            currentCompany?: string;
+            location?: string;
+          };
           posts: Array<{ postId?: string; content?: string; views?: number; likes?: number; comments?: number; reposts?: number; timestamp?: string; linkedinUrl?: string }>;
           scrapedAt: string;
         } 
