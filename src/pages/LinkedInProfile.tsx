@@ -1,25 +1,25 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { RefreshCw, MapPin, Briefcase, User, Clock, AlertCircle } from "lucide-react";
+import { RefreshCw, MapPin, Briefcase, User, Clock, AlertCircle, ExternalLink, Linkedin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useLinkedBotExtension } from "@/hooks/useLinkedBotExtension";
 import { useUserProfile, LinkedInProfileData } from "@/hooks/useUserProfile";
+import { useProfileSync } from "@/hooks/useProfileSync";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { formatDistanceToNow } from "date-fns";
+import { Link } from "react-router-dom";
 
 const LinkedInProfile = () => {
-  const { toast } = useToast();
   const { isConnected, isInstalled, isLoading: extensionLoading } = useLinkedBotExtension();
-  const { profile, isLoading: profileLoading } = useUserProfile();
+  const { profile, isLoading: profileLoading, fetchProfile } = useUserProfile();
+  const { syncProfileData, isRefreshing } = useProfileSync();
   
   const [profileData, setProfileData] = useState<LinkedInProfileData | null>(null);
   const [lastSynced, setLastSynced] = useState<Date | null>(null);
-  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Load saved profile data on mount
   useEffect(() => {
@@ -34,80 +34,14 @@ const LinkedInProfile = () => {
     }
   }, [profile]);
 
-  const refreshProfile = async () => {
-    if (!window.LinkedBotExtension) {
-      toast({
-        title: "Extension Not Found",
-        description: "Please install the LinkedBot Chrome extension first.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!isConnected) {
-      toast({
-        title: "Extension Not Connected",
-        description: "Please connect your extension from the LinkedIn Connection page.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsRefreshing(true);
-
-    try {
-      const result = await window.LinkedBotExtension.scrapeAnalytics();
-      
-      if (result?.success && result.data?.profile) {
-        const newProfileData: LinkedInProfileData = {
-          ...result.data.profile,
-        };
-        
-        setProfileData(newProfileData);
-        const now = new Date();
-        setLastSynced(now);
-
-        // Save to database
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          const { error } = await supabase
-            .from('user_profiles')
-            .update({
-              linkedin_profile_data: JSON.parse(JSON.stringify(newProfileData)),
-              profile_last_scraped: now.toISOString(),
-            })
-            .eq('user_id', user.id);
-
-          if (error) {
-            console.error('Error saving profile data:', error);
-            toast({
-              title: "Warning",
-              description: "Profile data refreshed but could not be saved.",
-              variant: "destructive",
-            });
-          } else {
-            toast({
-              title: "Profile Updated",
-              description: "Your LinkedIn profile data has been refreshed.",
-            });
-          }
-        }
-      } else {
-        toast({
-          title: "Refresh Failed",
-          description: result?.error || "Could not fetch profile data from LinkedIn.",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error('Error refreshing profile:', error);
-      toast({
-        title: "Error",
-        description: "Failed to refresh profile data. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsRefreshing(false);
+  const handleRefresh = async () => {
+    const result = await syncProfileData(profile?.linkedin_profile_url || undefined);
+    
+    if (result.success && result.data) {
+      setProfileData(result.data);
+      setLastSynced(new Date());
+      // Refresh the full profile to get updated data
+      fetchProfile();
     }
   };
 
@@ -121,6 +55,8 @@ const LinkedInProfile = () => {
   };
 
   const isLoading = extensionLoading || profileLoading;
+
+  const hasProfileUrl = Boolean(profile?.linkedin_profile_url);
 
   return (
     <DashboardLayout>
@@ -143,14 +79,18 @@ const LinkedInProfile = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
           >
-            <Card className="border-yellow-500/50 bg-yellow-500/10">
-              <CardContent className="flex items-center gap-3 py-4">
-                <AlertCircle className="w-5 h-5 text-yellow-500" />
-                <p className="text-sm">
-                  Install the LinkedBot Chrome extension to sync your profile data.
-                </p>
-              </CardContent>
-            </Card>
+            <Alert className="border-warning/50 bg-warning/10">
+              <AlertCircle className="w-4 h-4 text-warning" />
+              <AlertDescription className="flex items-center justify-between">
+                <span>Install the LinkedBot Chrome extension to sync your profile data.</span>
+                <Button size="sm" variant="outline" asChild className="ml-4">
+                  <a href="https://chrome.google.com/webstore" target="_blank" rel="noopener noreferrer">
+                    <ExternalLink className="w-3 h-3 mr-1" />
+                    Install
+                  </a>
+                </Button>
+              </AlertDescription>
+            </Alert>
           </motion.div>
         )}
 
@@ -160,14 +100,39 @@ const LinkedInProfile = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
           >
-            <Card className="border-yellow-500/50 bg-yellow-500/10">
-              <CardContent className="flex items-center gap-3 py-4">
-                <AlertCircle className="w-5 h-5 text-yellow-500" />
-                <p className="text-sm">
-                  Connect your extension from the LinkedIn Connection page to sync data.
-                </p>
-              </CardContent>
-            </Card>
+            <Alert className="border-warning/50 bg-warning/10">
+              <AlertCircle className="w-4 h-4 text-warning" />
+              <AlertDescription className="flex items-center justify-between">
+                <span>Connect your extension to sync data.</span>
+                <Button size="sm" variant="outline" asChild className="ml-4">
+                  <Link to="/dashboard/linkedin-connection">
+                    <Linkedin className="w-3 h-3 mr-1" />
+                    Connect
+                  </Link>
+                </Button>
+              </AlertDescription>
+            </Alert>
+          </motion.div>
+        )}
+
+        {/* Missing Profile URL Warning */}
+        {!isLoading && isConnected && !hasProfileUrl && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+          >
+            <Alert className="border-destructive/50 bg-destructive/10">
+              <AlertCircle className="w-4 h-4 text-destructive" />
+              <AlertDescription className="flex items-center justify-between">
+                <span>Add your LinkedIn profile URL to enable data syncing.</span>
+                <Button size="sm" variant="outline" asChild className="ml-4">
+                  <Link to="/dashboard/linkedin-connection">
+                    Add URL
+                  </Link>
+                </Button>
+              </AlertDescription>
+            </Alert>
           </motion.div>
         )}
 
@@ -179,15 +144,16 @@ const LinkedInProfile = () => {
         >
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <span>Profile Data</span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={refreshProfile}
-                  disabled={isRefreshing || !isConnected}
-                >
-                  <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <CardTitle className="flex items-center justify-between">
+              <span>Profile Data</span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRefresh}
+                disabled={isRefreshing || !isConnected || !hasProfileUrl}
+                title={!hasProfileUrl ? "Add your LinkedIn URL first" : undefined}
+              >
+                <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
                   {isRefreshing ? "Refreshing..." : "Refresh Data"}
                 </Button>
               </CardTitle>
