@@ -70,10 +70,22 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         <div className="flex flex-col h-full">
           {/* Logo */}
           <div className="flex items-center gap-3 px-6 py-5 border-b border-sidebar-border">
-            <div className="w-10 h-10 rounded-xl gradient-bg flex items-center justify-center">
-              <Bot className="w-6 h-6 text-primary-foreground" />
+            <div 
+              className="flex items-center gap-3 cursor-pointer"
+              onClick={() => {
+                if (location.pathname === '/dashboard') {
+                  // Soft refresh - reload the page data
+                  window.location.reload();
+                } else {
+                  window.location.href = '/dashboard';
+                }
+              }}
+            >
+              <div className="w-10 h-10 rounded-xl gradient-bg flex items-center justify-center">
+                <Bot className="w-6 h-6 text-primary-foreground" />
+              </div>
+              <span className="text-xl font-bold">LinkedBot</span>
             </div>
-            <span className="text-xl font-bold">LinkedBot</span>
             <button
               className="ml-auto lg:hidden"
               onClick={() => setSidebarOpen(false)}
