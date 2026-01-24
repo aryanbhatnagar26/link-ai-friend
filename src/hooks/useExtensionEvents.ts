@@ -6,6 +6,13 @@ interface PostPublishedEvent {
   trackingId?: string;
   postId?: string;
   linkedinUrl?: string;
+  postedAt?: string;
+}
+
+interface PostFailedEvent {
+  postId?: string;
+  trackingId?: string;
+  error?: string;
 }
 
 interface AnalyticsUpdatedEvent {
@@ -38,45 +45,72 @@ interface ErrorEvent {
   code?: string;
 }
 
+/**
+ * Global hook to listen for Chrome extension events
+ * Invalidates react-query caches and shows toasts on extension actions
+ */
 export const useExtensionEvents = () => {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    // Listen for post published
+    // Listen for post published - CRITICAL for status update
     const handlePostPublished = (event: CustomEvent<PostPublishedEvent>) => {
-      const { trackingId, linkedinUrl } = event.detail;
+      const { postId, trackingId, linkedinUrl } = event.detail;
       
-      // Refetch relevant queries
+      console.log('✅ Extension Event: Post published', { postId, trackingId, linkedinUrl });
+      
+      // Invalidate all relevant queries to refetch fresh data
       queryClient.invalidateQueries({ queryKey: ['posts'] });
       queryClient.invalidateQueries({ queryKey: ['scheduled-posts'] });
       queryClient.invalidateQueries({ queryKey: ['analytics'] });
       queryClient.invalidateQueries({ queryKey: ['agents'] });
       queryClient.invalidateQueries({ queryKey: ['user-profile'] });
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
       
-      console.log('✅ Post published:', linkedinUrl || trackingId);
-      toast.success('Post published successfully!');
+      toast.success('Post published successfully!', {
+        description: linkedinUrl ? 'Click to view on LinkedIn' : undefined,
+        action: linkedinUrl ? {
+          label: 'View Post',
+          onClick: () => window.open(linkedinUrl, '_blank'),
+        } : undefined,
+      });
+    };
+
+    // Listen for post failed
+    const handlePostFailed = (event: CustomEvent<PostFailedEvent>) => {
+      const { postId, error } = event.detail;
+      
+      console.log('❌ Extension Event: Post failed', { postId, error });
+      
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
+      queryClient.invalidateQueries({ queryKey: ['scheduled-posts'] });
+      
+      toast.error('Post failed to publish', {
+        description: error || 'Please try again',
+      });
     };
 
     // Listen for analytics update
     const handleAnalyticsUpdated = (event: CustomEvent<AnalyticsUpdatedEvent>) => {
+      console.log('📊 Extension Event: Analytics updated');
       queryClient.invalidateQueries({ queryKey: ['analytics'] });
       queryClient.invalidateQueries({ queryKey: ['posts'] });
-      console.log('✅ Analytics updated');
+      queryClient.invalidateQueries({ queryKey: ['linkedin-analytics'] });
     };
 
     // Listen for profile scraped
     const handleProfileScraped = (event: CustomEvent<ProfileScrapedEvent>) => {
+      console.log('👤 Extension Event: Profile scraped');
       queryClient.invalidateQueries({ queryKey: ['linkedin-profile'] });
       queryClient.invalidateQueries({ queryKey: ['user-profile'] });
       queryClient.invalidateQueries({ queryKey: ['linkedin-analytics'] });
-      console.log('✅ Profile scraped');
       toast.success('Profile data refreshed!');
     };
 
     // Listen for connection status changes
     const handleConnectionChanged = (event: CustomEvent<ConnectionChangedEvent>) => {
       const { connected } = event.detail;
-      console.log('🔗 Connection status:', connected ? 'connected' : 'disconnected');
+      console.log('🔗 Extension Event: Connection', connected ? 'connected' : 'disconnected');
       
       if (connected) {
         toast.success('Extension connected!');
@@ -88,11 +122,13 @@ export const useExtensionEvents = () => {
     // Listen for errors
     const handleError = (event: CustomEvent<ErrorEvent>) => {
       const { message } = event.detail;
-      console.error('❌ Extension error:', message);
+      console.error('❌ Extension Event: Error', message);
       toast.error(message || 'An error occurred with the extension');
     };
 
+    // Register all event listeners
     window.addEventListener('linkedbot:post-published', handlePostPublished as EventListener);
+    window.addEventListener('linkedbot:post-failed', handlePostFailed as EventListener);
     window.addEventListener('linkedbot:analytics-updated', handleAnalyticsUpdated as EventListener);
     window.addEventListener('linkedbot:profile-scraped', handleProfileScraped as EventListener);
     window.addEventListener('linkedbot:connection-changed', handleConnectionChanged as EventListener);
@@ -100,6 +136,7 @@ export const useExtensionEvents = () => {
 
     return () => {
       window.removeEventListener('linkedbot:post-published', handlePostPublished as EventListener);
+      window.removeEventListener('linkedbot:post-failed', handlePostFailed as EventListener);
       window.removeEventListener('linkedbot:analytics-updated', handleAnalyticsUpdated as EventListener);
       window.removeEventListener('linkedbot:profile-scraped', handleProfileScraped as EventListener);
       window.removeEventListener('linkedbot:connection-changed', handleConnectionChanged as EventListener);

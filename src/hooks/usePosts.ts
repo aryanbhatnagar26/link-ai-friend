@@ -30,11 +30,15 @@ export interface CreatePostData {
   agent_name?: string;
 }
 
+// Polling interval for fallback (10 seconds)
+const POLLING_INTERVAL_MS = 10000;
+
 export const usePosts = () => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
+  const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchPosts = useCallback(async (filters?: { status?: string; limit?: number }) => {
     try {
@@ -90,7 +94,7 @@ export const usePosts = () => {
             filter: `user_id=eq.${user.id}`,
           },
           (payload) => {
-            console.log('Post updated via realtime:', payload.new);
+            console.log('📡 Post updated via realtime:', payload.new);
             // Update local state with the new post data
             setPosts(prev => 
               prev.map(post => 
@@ -107,6 +111,15 @@ export const usePosts = () => {
                 description: "Your LinkedIn post has been published successfully!",
               });
             }
+            
+            // Show toast if post failed
+            if (payload.new.status === 'failed' && payload.old?.status !== 'failed') {
+              toast({
+                title: "Post Failed ❌",
+                description: payload.new.last_error || "Failed to publish your post.",
+                variant: "destructive",
+              });
+            }
           }
         )
         .subscribe();
@@ -119,19 +132,97 @@ export const usePosts = () => {
     setupRealtimeSubscription();
   }, [toast]);
 
-  // Polling fallback: refetch on window focus
+  // Listen for extension events (Chrome extension messages)
   useEffect(() => {
+    const handlePostPublished = (event: CustomEvent) => {
+      const data = event.detail;
+      console.log('🔗 Extension: Post published event', data);
+      
+      // Immediately update local state if we have postId
+      if (data?.postId) {
+        setPosts(prev => 
+          prev.map(post => 
+            post.id === data.postId 
+              ? { 
+                  ...post, 
+                  status: 'posted',
+                  linkedin_post_url: data.linkedinUrl || post.linkedin_post_url,
+                  posted_at: data.postedAt || new Date().toISOString()
+                }
+              : post
+          )
+        );
+      }
+      
+      // Refetch to ensure consistency
+      fetchPosts();
+    };
+
+    const handlePostFailed = (event: CustomEvent) => {
+      const data = event.detail;
+      console.log('❌ Extension: Post failed event', data);
+      
+      if (data?.postId) {
+        setPosts(prev => 
+          prev.map(post => 
+            post.id === data.postId 
+              ? { ...post, status: 'failed', last_error: data.error || 'Unknown error' }
+              : post
+          )
+        );
+      }
+      
+      fetchPosts();
+    };
+
+    // Listen for both bridge events and direct extension messages
+    window.addEventListener('linkedbot:post-published', handlePostPublished as EventListener);
+    window.addEventListener('linkedbot:post-failed', handlePostFailed as EventListener);
+    
+    return () => {
+      window.removeEventListener('linkedbot:post-published', handlePostPublished as EventListener);
+      window.removeEventListener('linkedbot:post-failed', handlePostFailed as EventListener);
+    };
+  }, [fetchPosts]);
+
+  // Polling fallback: refetch every 10 seconds + on window focus
+  useEffect(() => {
+    // Start polling interval
+    pollingRef.current = setInterval(() => {
+      console.log('🔄 Polling: Refreshing posts...');
+      fetchPosts();
+    }, POLLING_INTERVAL_MS);
+
+    // Also refetch on window focus
     const handleFocus = () => {
+      console.log('👁️ Window focus: Refreshing posts...');
       fetchPosts();
     };
 
     window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
+    
+    return () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+      }
+      window.removeEventListener('focus', handleFocus);
+    };
   }, [fetchPosts]);
 
   const fetchScheduledPosts = useCallback(async () => {
     return fetchPosts({ status: "scheduled" });
   }, [fetchPosts]);
+
+  // Set post to "posting" state (optimistic UI before extension publishes)
+  const markAsPosting = useCallback((postId: string) => {
+    setPosts(prev =>
+      prev.map(post =>
+        post.id === postId
+          ? { ...post, status: 'posting' }
+          : post
+      )
+    );
+  }, []);
 
   const createPost = useCallback(async (postData: CreatePostData): Promise<Post | null> => {
     try {
@@ -262,5 +353,6 @@ export const usePosts = () => {
     updatePost,
     deletePost,
     getPostsForDate,
+    markAsPosting, // New: for optimistic UI
   };
 };
