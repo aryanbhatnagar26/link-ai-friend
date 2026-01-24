@@ -6,6 +6,16 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
+interface SyncPostPayload {
+  trackingId?: string;
+  postId?: string;
+  userId?: string;
+  linkedinUrl?: string;
+  status?: 'posted' | 'failed' | 'scheduled';
+  postedAt?: string;
+  lastError?: string;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -19,7 +29,8 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { trackingId, postId, userId, linkedinUrl, status, postedAt } = await req.json();
+    const payload: SyncPostPayload = await req.json();
+    const { trackingId, postId, userId, linkedinUrl, status, postedAt, lastError } = payload;
 
     if (!trackingId && !postId) {
       return new Response(JSON.stringify({ error: 'trackingId or postId required' }), {
@@ -33,17 +44,34 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Update post with LinkedIn URL
-    let query = supabase.from('posts').update({
-      linkedin_post_url: linkedinUrl,
+    // Build update data based on status
+    const updateData: Record<string, unknown> = {
       status: status || 'posted',
-      posted_at: postedAt || new Date().toISOString(),
-    });
+      updated_at: new Date().toISOString(),
+    };
 
-    if (trackingId) {
-      query = query.eq('tracking_id', trackingId);
-    } else if (postId) {
+    if (status === 'posted' || !status) {
+      updateData.linkedin_post_url = linkedinUrl || null;
+      updateData.posted_at = postedAt || new Date().toISOString();
+    }
+
+    if (status === 'failed') {
+      updateData.last_error = lastError || 'Unknown error';
+      updateData.retry_count = 1; // Will be incremented by retry logic
+    }
+
+    // Build query - match by postId (preferred) or trackingId
+    let query = supabase.from('posts').update(updateData);
+
+    if (postId) {
       query = query.eq('id', postId);
+    } else if (trackingId) {
+      query = query.eq('tracking_id', trackingId);
+    }
+
+    // Optionally filter by userId for security
+    if (userId) {
+      query = query.eq('user_id', userId);
     }
 
     const { error: postError } = await query;
@@ -53,8 +81,9 @@ Deno.serve(async (req) => {
       throw postError;
     }
 
-    // Increment daily post count if userId provided
-    if (userId) {
+    // Only increment counts and create notification for successful posts
+    if (userId && (status === 'posted' || !status)) {
+      // Increment daily post count
       const { error: rpcError } = await supabase.rpc('increment_daily_post_count', { 
         p_user_id: userId 
       });
@@ -62,7 +91,7 @@ Deno.serve(async (req) => {
         console.error('RPC error:', rpcError);
       }
 
-      // Create notification
+      // Create success notification
       await supabase.from('notifications').insert({
         user_id: userId,
         title: 'Post Published 🎉',
@@ -70,12 +99,12 @@ Deno.serve(async (req) => {
         type: 'post',
       });
 
-      // Update user profile posts_published_count using raw increment
+      // Update user profile posts_published_count
       const { data: currentProfile } = await supabase
         .from('user_profiles')
         .select('posts_published_count')
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
       
       if (currentProfile) {
         await supabase
@@ -84,6 +113,18 @@ Deno.serve(async (req) => {
           .eq('user_id', userId);
       }
     }
+
+    // Create failure notification
+    if (userId && status === 'failed') {
+      await supabase.from('notifications').insert({
+        user_id: userId,
+        title: 'Post Failed ❌',
+        message: lastError || 'Failed to publish your post. Please try again.',
+        type: 'post',
+      });
+    }
+
+    console.log(`Post ${postId || trackingId} status updated to: ${status || 'posted'}`);
 
     return new Response(JSON.stringify({ success: true }), {
       status: 200,

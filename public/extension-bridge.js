@@ -1,21 +1,44 @@
 // LinkedBot Extension Bridge
-// This script allows the extension to communicate with the React app
+// This script allows the Chrome extension to communicate with the React app
+// Extension calls these methods → Bridge dispatches events + notifies backend
 
 window.LinkedBotBridge = {
-  // Called by extension when post is published
+  // Called by extension when post is published successfully
+  // CRITICAL: This updates the posts table and triggers UI refresh
   onPostPublished: function(data) {
     console.log('🔗 Bridge: Post published event received', data);
     
-    // Dispatch event for React
+    // Dispatch event for React (listened by usePosts + useExtensionEvents)
     window.dispatchEvent(new CustomEvent('linkedbot:post-published', {
-      detail: data
+      detail: {
+        postId: data.postId,
+        trackingId: data.trackingId,
+        linkedinUrl: data.linkedinUrl,
+        postedAt: data.postedAt || new Date().toISOString()
+      }
     }));
     
-    // Also notify backend to update status
+    // Notify backend to update database
     this.notifyPostSuccess(data);
   },
   
-  // Notify backend of successful post
+  // Called by extension when post fails
+  onPostFailed: function(data) {
+    console.log('🔗 Bridge: Post failed event received', data);
+    
+    window.dispatchEvent(new CustomEvent('linkedbot:post-failed', {
+      detail: {
+        postId: data.postId,
+        trackingId: data.trackingId,
+        error: data.error || 'Unknown error'
+      }
+    }));
+    
+    // Notify backend of failure
+    this.notifyPostFailure(data);
+  },
+  
+  // Notify backend of successful post - updates posts table
   notifyPostSuccess: async function(data) {
     try {
       const supabaseUrl = 'https://glrgfnqdzwbpkcsoxsgd.supabase.co';
@@ -39,6 +62,29 @@ window.LinkedBotBridge = {
       }
     } catch (error) {
       console.error('🔗 Bridge: Failed to notify backend:', error);
+    }
+  },
+  
+  // Notify backend of failed post
+  notifyPostFailure: async function(data) {
+    try {
+      const supabaseUrl = 'https://glrgfnqdzwbpkcsoxsgd.supabase.co';
+      const response = await fetch(`${supabaseUrl}/functions/v1/sync-post`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          postId: data.postId,
+          trackingId: data.trackingId,
+          userId: data.userId,
+          status: 'failed',
+          lastError: data.error || 'Unknown error'
+        })
+      });
+      
+      const result = await response.json();
+      console.log('🔗 Bridge: Backend notified of post failure:', result);
+    } catch (error) {
+      console.error('🔗 Bridge: Failed to notify backend of failure:', error);
     }
   },
 
@@ -91,4 +137,4 @@ window.LinkedBotBridge = {
   }
 };
 
-console.log('✅ LinkedBot Bridge Ready');
+console.log('✅ LinkedBot Bridge Ready - v2');
