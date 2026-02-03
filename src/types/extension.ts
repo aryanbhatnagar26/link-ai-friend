@@ -6,6 +6,7 @@ export type ExtensionEventType =
   | 'postFilling'
   | 'postPublished'
   | 'postSuccess'
+  | 'postCompleted'  // Added: extension sends this on completion
   | 'postFailed'
   | 'postUrlFailed'
   | 'postRetrying'
