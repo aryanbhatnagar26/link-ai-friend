@@ -367,11 +367,47 @@ export const useExtensionEvents = () => {
               break;
               
             case 'postSuccess':
+            case 'postCompleted':
               updatePostStatus(postId, {
                 status: 'posted',
                 message: data.message || 'Posted successfully!',
                 linkedinUrl: data.linkedinUrl,
               });
+              
+              // 🔥 CRITICAL: Save to database from here too!
+              (async () => {
+                try {
+                  const { supabase } = await import('@/integrations/supabase/client');
+                  
+                  const updateData: Record<string, unknown> = {
+                    status: 'posted',
+                    posted_at: new Date().toISOString(),
+                  };
+                  
+                  if (data.linkedinUrl) {
+                    updateData.linkedin_post_url = data.linkedinUrl;
+                    updateData.views_count = 0;
+                    updateData.likes_count = 0;
+                    updateData.comments_count = 0;
+                    updateData.shares_count = 0;
+                  }
+                  
+                  console.log('💾 Saving post status to database:', postId, updateData);
+                  
+                  const { error: updateError } = await supabase
+                    .from('posts')
+                    .update(updateData)
+                    .eq('id', postId);
+                  
+                  if (updateError) {
+                    console.error('Failed to update post status:', updateError);
+                  } else {
+                    console.log('✅ Post status saved to database');
+                  }
+                } catch (err) {
+                  console.error('Error saving post status:', err);
+                }
+              })();
               
               // Invalidate queries
               queryClient.invalidateQueries({ queryKey: ['posts'], refetchType: 'all' });
