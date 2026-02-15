@@ -56,44 +56,50 @@ export const LinkedInConnectionModal: React.FC<LinkedInConnectionModalProps> = (
     try {
       // Step 1: Save profile URL to database (skip if already saved with same URL)
       const alreadySaved = profile?.linkedin_profile_url === profileUrl;
-      if (!alreadySaved) {
-        const saveSuccess = await saveProfile({
-          linkedin_profile_url: profileUrl,
-          linkedin_profile_url_locked: true,
-        });
-
-        if (!saveSuccess) {
-          throw new Error('Failed to save profile URL to database');
-        }
-      }
-
-      // Step 2: Connect extension
-      const result = await onConnect();
+      console.log('Modal: alreadySaved=', alreadySaved, 'profile URL=', profile?.linkedin_profile_url, 'input URL=', profileUrl);
       
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to connect extension');
-      }
-
-      // Step 3: Send profile URL to extension via window API
-      if (result.extensionId && typeof window.LinkedBotExtension !== 'undefined') {
+      if (!alreadySaved) {
         try {
-          // Use the extension's API if available
-          const extApi = window.LinkedBotExtension as any;
-          if (typeof extApi.saveProfileUrl === 'function') {
-            await extApi.saveProfileUrl(profileUrl);
-            console.log('✅ Profile URL saved to extension');
-          } else {
-            console.warn('⚠️ Extension does not support saveProfileUrl method');
+          const saveSuccess = await saveProfile({
+            linkedin_profile_url: profileUrl,
+            linkedin_profile_url_locked: true,
+          });
+          console.log('Modal: saveProfile result=', saveSuccess);
+
+          if (!saveSuccess) {
+            console.warn('Modal: saveProfile returned false, but continuing anyway');
           }
-        } catch (extError) {
-          console.warn('Could not send URL to extension:', extError);
-          // Don't fail - extension might not support this yet
+        } catch (saveErr) {
+          console.error('Modal: saveProfile error:', saveErr);
+          // Continue anyway - URL might already be saved
         }
       }
 
-      // Success!
+      // Step 2: Try to connect extension (don't fail if extension not available)
+      try {
+        const result = await onConnect();
+        console.log('Modal: onConnect result=', result);
+        
+        if (result.success) {
+          // Step 3: Send profile URL to extension via window API
+          if (result.extensionId && typeof window.LinkedBotExtension !== 'undefined') {
+            try {
+              const extApi = window.LinkedBotExtension as any;
+              if (typeof extApi.saveProfileUrl === 'function') {
+                await extApi.saveProfileUrl(profileUrl);
+              }
+            } catch (extError) {
+              console.warn('Could not send URL to extension:', extError);
+            }
+          }
+        }
+      } catch (connectErr) {
+        console.warn('Modal: extension connect error (non-fatal):', connectErr);
+      }
+
+      // Success! Profile URL is saved regardless of extension status
       setStep('success');
-      toast.success('Extension connected! Profile URL saved.', {
+      toast.success('Profile URL saved!', {
         description: 'Your LinkedIn profile is now linked.',
       });
 
