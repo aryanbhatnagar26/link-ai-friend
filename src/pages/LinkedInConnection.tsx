@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { useLinkedBotExtension } from "@/hooks/useLinkedBotExtension";
@@ -6,14 +6,15 @@ import { useLinkedInAnalytics } from "@/hooks/useLinkedInAnalytics";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { LinkedInConnectionModal } from "@/components/linkedin/LinkedInConnectionModal";
 import LinkedInVerification from "@/components/linkedin/LinkedInVerification";
-import { extractLinkedInId } from "@/utils/linkedinVerification";
+import { extractLinkedInId, verifyLinkedInAccount } from "@/utils/linkedinVerification";
 import { supabase } from "@/integrations/supabase/client";
+import { toast as sonnerToast } from "sonner";
 import {
   Wifi,
   WifiOff,
@@ -50,6 +51,16 @@ const LinkedInConnectionPage = () => {
 
   const { profile, isLoading: profileLoading, fetchProfile } = useUserProfile();
 
+  const [scanComplete, setScanComplete] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [connecting, setConnecting] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [skipProfileCheck, setSkipProfileCheck] = useState(false);
+  const [urlJustSaved, setUrlJustSaved] = useState(false);
+
+  const hasProfileUrl = Boolean(profile?.linkedin_profile_url) || urlJustSaved;
+
   // Auto-fix: extract linkedin_public_id if URL exists but public_id is missing
   useEffect(() => {
     if (profile?.linkedin_profile_url && !profile?.linkedin_public_id) {
@@ -67,14 +78,37 @@ const LinkedInConnectionPage = () => {
     }
   }, [profile?.linkedin_profile_url, profile?.linkedin_public_id]);
 
-  const [scanComplete, setScanComplete] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [connecting, setConnecting] = useState(false);
-  const [scanning, setScanning] = useState(false);
-  const [showProfileModal, setShowProfileModal] = useState(false);
-  const [skipProfileCheck, setSkipProfileCheck] = useState(false);
+  // Auto-verify when profile URL exists and extension is connected
+  const autoVerify = useCallback(async (profileUrl: string) => {
+    const publicId = extractLinkedInId(profileUrl);
+    if (!publicId) return;
 
-  const hasProfileUrl = Boolean(profile?.linkedin_profile_url);
+    try {
+      const result = await verifyLinkedInAccount(publicId);
+      if (result.success) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await supabase.from('user_profiles')
+            .update({
+              linkedin_verified: true,
+              linkedin_verified_at: new Date().toISOString(),
+              linkedin_public_id: publicId,
+            })
+            .eq('user_id', user.id);
+          await fetchProfile();
+          sonnerToast.success('✅ LinkedIn account verified automatically!');
+        }
+      } else if (result.error === 'LINKEDIN_NOT_OPEN' || result.error === 'NOT_LOGGED_IN') {
+        sonnerToast.warning('LinkedIn not detected', {
+          description: 'Please open linkedin.com in this browser and log in. You can verify later from Settings.',
+        });
+      }
+      // For other errors (ACCOUNT_MISMATCH etc), show nothing - user can re-verify from Settings
+    } catch (err) {
+      // Extension not installed or timeout - silently skip auto-verify
+      console.log('Auto-verify skipped:', err instanceof Error ? err.message : err);
+    }
+  }, [fetchProfile]);
 
   const handleConnect = async () => {
     setError(null);
@@ -111,7 +145,6 @@ const LinkedInConnectionPage = () => {
   };
 
   const handleScanPosts = async (forceSkipCheck = false) => {
-    // Check for profile URL first (skip if called after modal success)
     if (!hasProfileUrl && !forceSkipCheck && !skipProfileCheck) {
       setShowProfileModal(true);
       toast({
@@ -121,7 +154,6 @@ const LinkedInConnectionPage = () => {
       });
       return;
     }
-    // Reset skip flag after use
     setSkipProfileCheck(false);
 
     const ext = window.LinkedBotExtension as any;
@@ -221,10 +253,7 @@ const LinkedInConnectionPage = () => {
                       <RefreshCw className="w-4 h-4" />
                       Refresh Status
                     </Button>
-                    <Button
-                      asChild
-                      variant="outline"
-                    >
+                    <Button asChild variant="outline">
                       <a
                         href={import.meta.env.VITE_EXTENSION_STORE_URL || 'https://chrome.google.com/webstore'}
                         target="_blank"
@@ -275,10 +304,7 @@ const LinkedInConnectionPage = () => {
 
         {/* Error Alert */}
         {error && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-          >
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             <Alert variant="destructive">
               <AlertCircle className="w-4 h-4" />
               <AlertDescription>{error}</AlertDescription>
@@ -287,16 +313,16 @@ const LinkedInConnectionPage = () => {
         )}
 
         {/* LinkedIn Verification - show whenever profile has LinkedIn URL */}
-        {profile?.linkedin_profile_url && (
+        {(profile?.linkedin_profile_url || urlJustSaved) && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15 }}
           >
             <LinkedInVerification
-              linkedinPublicId={profile.linkedin_public_id}
-              linkedinVerified={profile.linkedin_verified}
-              linkedinProfileUrl={profile.linkedin_profile_url}
+              linkedinPublicId={profile?.linkedin_public_id || null}
+              linkedinVerified={profile?.linkedin_verified || false}
+              linkedinProfileUrl={profile?.linkedin_profile_url || null}
               onVerificationComplete={() => fetchProfile()}
             />
           </motion.div>
@@ -322,7 +348,7 @@ const LinkedInConnectionPage = () => {
           </motion.div>
         )}
 
-        {/* Missing Profile URL Banner - only show after profile is loaded */}
+        {/* Missing Profile URL Banner - only when no URL at all */}
         {isConnected && !profileLoading && !hasProfileUrl && !showProfileModal && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -402,19 +428,28 @@ const LinkedInConnectionPage = () => {
         extensionId={extensionId}
         onConnect={connectExtension}
         onSuccess={async () => {
+          setUrlJustSaved(true);
           await fetchProfile();
           toast({
             title: "Profile URL saved",
-            description: "Starting post scan automatically...",
+            description: "Verifying LinkedIn account...",
           });
-          // Auto-trigger post scanning after profile URL is saved
-          // Use forceSkipCheck=true since we just saved the URL
-          setTimeout(() => {
-            const ext = window.LinkedBotExtension as any;
-            if (ext?.scanPosts) {
-              handleScanPosts(true);
-            }
-          }, 500);
+
+          // Auto-verify LinkedIn account after URL is saved
+          const updatedProfile = await supabase.auth.getUser().then(async ({ data: { user } }) => {
+            if (!user) return null;
+            const { data } = await supabase
+              .from('user_profiles')
+              .select('linkedin_profile_url')
+              .eq('user_id', user.id)
+              .single();
+            return data;
+          });
+
+          if (updatedProfile?.linkedin_profile_url) {
+            // Try auto-verification
+            setTimeout(() => autoVerify(updatedProfile.linkedin_profile_url!), 1000);
+          }
         }}
       />
     </DashboardLayout>
