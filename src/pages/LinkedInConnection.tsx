@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { useLinkedBotExtension } from "@/hooks/useLinkedBotExtension";
@@ -12,6 +12,8 @@ import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { LinkedInConnectionModal } from "@/components/linkedin/LinkedInConnectionModal";
 import LinkedInVerification from "@/components/linkedin/LinkedInVerification";
+import { extractLinkedInId } from "@/utils/linkedinVerification";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Wifi,
   WifiOff,
@@ -47,6 +49,23 @@ const LinkedInConnectionPage = () => {
   } = useLinkedInAnalytics();
 
   const { profile, isLoading: profileLoading, fetchProfile } = useUserProfile();
+
+  // Auto-fix: extract linkedin_public_id if URL exists but public_id is missing
+  useEffect(() => {
+    if (profile?.linkedin_profile_url && !profile?.linkedin_public_id) {
+      const publicId = extractLinkedInId(profile.linkedin_profile_url);
+      if (publicId) {
+        supabase.auth.getUser().then(({ data: { user } }) => {
+          if (user) {
+            supabase.from('user_profiles')
+              .update({ linkedin_public_id: publicId })
+              .eq('user_id', user.id)
+              .then(() => fetchProfile());
+          }
+        });
+      }
+    }
+  }, [profile?.linkedin_profile_url, profile?.linkedin_public_id]);
 
   const [scanComplete, setScanComplete] = useState(false);
   const [error, setError] = useState<string | null>(null);
