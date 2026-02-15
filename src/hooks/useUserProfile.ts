@@ -116,8 +116,26 @@ export const useUserProfile = () => {
 
   const saveProfile = async (profileData: ProfileData): Promise<boolean> => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      // Try getUser first, fall back to getSession if it fails
+      let userId: string | undefined;
+      let userEmail: string | undefined;
+      
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        userId = user?.id;
+        userEmail = user?.email;
+      } catch {
+        // getUser can fail with network issues; fall back to cached session
+        console.warn('getUser failed, falling back to getSession');
+      }
+      
+      if (!userId) {
+        const { data: { session } } = await supabase.auth.getSession();
+        userId = session?.user?.id;
+        userEmail = session?.user?.email;
+      }
+      
+      if (!userId) {
         toast({
           title: "Not authenticated",
           description: "Please log in to save your profile.",
@@ -125,6 +143,8 @@ export const useUserProfile = () => {
         });
         return false;
       }
+
+      const user = { id: userId, email: userEmail };
 
       const dataToSave = {
         user_id: user.id,
