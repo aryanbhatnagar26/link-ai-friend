@@ -6,10 +6,12 @@ import { useLinkedBotExtension } from '@/hooks/useLinkedBotExtension';
 
 interface MissingProfileBannerProps {
   onDismiss?: () => void;
+  onProfileSaved?: () => void;
 }
 
 export const MissingProfileBanner: React.FC<MissingProfileBannerProps> = ({
   onDismiss,
+  onProfileSaved,
 }) => {
   const [showModal, setShowModal] = useState(false);
   const [dismissed, setDismissed] = useState(false);
@@ -65,6 +67,10 @@ export const MissingProfileBanner: React.FC<MissingProfileBannerProps> = ({
         onOpenChange={setShowModal}
         extensionId={extensionId}
         onConnect={connectExtension}
+        onSuccess={() => {
+          setDismissed(true);
+          onProfileSaved?.();
+        }}
       />
     </>
   );

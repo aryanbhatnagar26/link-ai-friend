@@ -105,7 +105,7 @@ const DashboardPage = () => {
   usePageTitle("Dashboard");
   const navigate = useNavigate();
   const { isConnected, sendPendingPosts } = useLinkedBotExtension();
-  const { profile, isLoading: profileLoading } = useUserProfile();
+  const { profile, isLoading: profileLoading, fetchProfile } = useUserProfile();
   const { posts: analyticsPosts, isLoading: analyticsLoading } = useLinkedInAnalytics();
   const { agents, isLoading: agentsLoading } = useAgents();
   
@@ -368,7 +368,7 @@ const DashboardPage = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
           >
-            <MissingProfileBanner />
+            <MissingProfileBanner onProfileSaved={fetchProfile} />
           </motion.div>
         )}
         
