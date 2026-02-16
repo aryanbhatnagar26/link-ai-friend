@@ -72,6 +72,23 @@ const CHAT_STORAGE_PREFIX = "linkedbot_chat_history_";
 const POSTS_STORAGE_PREFIX = "linkedbot_generated_posts_";
 const MAX_STORED_MESSAGES = 30;
 
+// Generate a descriptive image prompt from post content
+function generateImagePromptFromContent(content: string): string {
+  const firstLine = content.split('\n').filter(l => l.trim())[0]?.trim() || 'Professional content';
+  const clean = firstLine.replace(/[\u{1F300}-\u{1F9FF}]/gu, '').replace(/[^\w\s.,!?-]/g, '').trim().substring(0, 120);
+  const lower = content.toLowerCase();
+  const themes: string[] = [];
+  if (lower.includes('ai') || lower.includes('artificial intelligence')) themes.push('AI technology');
+  if (lower.includes('leader')) themes.push('leadership');
+  if (lower.includes('tech') || lower.includes('software')) themes.push('technology');
+  if (lower.includes('data') || lower.includes('analytics')) themes.push('data visualization');
+  if (lower.includes('team') || lower.includes('collaboration')) themes.push('teamwork');
+  if (lower.includes('sales') || lower.includes('marketing')) themes.push('marketing');
+  if (lower.includes('health') || lower.includes('medical')) themes.push('healthcare');
+  const themeStr = themes.length > 0 ? themes.join(', ') : 'professional business';
+  return `Professional LinkedIn image: ${clean}, ${themeStr}, modern clean design, high quality`;
+}
+
 // Get user-specific storage keys
 function getChatStorageKey(agentId?: string | null): string {
   return `${CHAT_STORAGE_PREFIX}${agentId || 'default'}`;
@@ -352,13 +369,22 @@ export function useAgentChat(
         console.log("🔥 ADDING POSTS TO STATE NOW:", data.posts.length);
         console.log("🔥 Post content:", data.posts[0]?.content?.substring(0, 100));
         
-        const newPosts: GeneratedPost[] = data.posts.map((p: any) => ({
-          ...p,
-          id: p.id || `post-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          status: 'draft' as PostStatus,
-          approved: false,
-          imageSkipped: false,
-        }));
+        const newPosts: GeneratedPost[] = data.posts.map((p: any) => {
+          const postId = p.id || `post-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+          // If generateImage was requested, create a content-based prompt but DON'T auto-generate
+          const shouldGenerateImage = p.generateImage || options?.generateImage;
+          const autoPrompt = shouldGenerateImage ? generateImagePromptFromContent(p.content) : undefined;
+          
+          return {
+            ...p,
+            id: postId,
+            status: 'draft' as PostStatus,
+            approved: false,
+            imageSkipped: false,
+            generateImage: shouldGenerateImage || false,
+            imagePrompt: p.imagePrompt || autoPrompt || '',
+          };
+        });
         
         // CRITICAL: Add to generated posts immediately
         setGeneratedPosts(prev => {
@@ -367,18 +393,10 @@ export function useAgentChat(
           return updated;
         });
         
-        toast.success(`📝 Post created! Say "post now" or give a time to schedule.`);
-        
-        // Auto-generate images for posts that have generateImage flag
-        for (const post of newPosts) {
-          if (post.generateImage && post.imagePrompt) {
-            console.log("🎨 Auto-generating image for post:", post.id);
-            // Delay slightly to ensure state is updated
-            setTimeout(() => {
-              generateImageForPostDirect(post.id, post.content, post.imagePrompt);
-            }, 500);
-          }
-        }
+        const imageNote = newPosts.some(p => p.generateImage) 
+          ? ' Toggle the AI image switch on the post card to generate.' 
+          : '';
+        toast.success(`📝 Post created! Say "post now" or give a time to schedule.${imageNote}`);
       } else {
         console.log("⚠️ No posts in response to add");
       }
