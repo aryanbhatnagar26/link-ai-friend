@@ -52,6 +52,7 @@ const AgentsPage = () => {
   usePageTitle("AI Agents");
   const navigate = useNavigate();
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [trainAgentId, setTrainAgentId] = useState<string | null>(null);
   const [createStep, setCreateStep] = useState(1);
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -233,6 +234,15 @@ const AgentsPage = () => {
                   >
                     <MessageSquare className="w-4 h-4" />
                     Chat
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="text-primary hover:text-primary"
+                    onClick={() => setTrainAgentId(agent.id)}
+                    title="Train Agent"
+                  >
+                    <GraduationCap className="w-4 h-4" />
                   </Button>
                   <Button 
                     variant="ghost" 
