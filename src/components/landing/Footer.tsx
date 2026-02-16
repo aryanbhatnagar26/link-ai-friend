@@ -11,11 +11,11 @@ const Footer = forwardRef<HTMLElement>((_, ref) => {
   };
 
   return (
-    <footer ref={ref} className="bg-sidebar text-sidebar-foreground py-16">
+    <footer ref={ref} className="bg-sidebar text-sidebar-foreground py-10 md:py-16">
       <div className="container px-4">
-        <div className="grid md:grid-cols-4 gap-12 mb-12">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12 mb-8 md:mb-12">
           {/* Brand */}
-          <div className="md:col-span-1">
+          <div className="col-span-2 md:col-span-1">
             <div className="flex items-center gap-2 mb-4">
               <div className="w-10 h-10 rounded-xl gradient-bg flex items-center justify-center">
                 <Bot className="w-6 h-6 text-primary-foreground" />

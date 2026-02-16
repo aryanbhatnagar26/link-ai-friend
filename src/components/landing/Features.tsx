@@ -58,7 +58,7 @@ const stats = [
 
 const Features = () => {
   return (
-    <section className="py-24 relative overflow-hidden">
+    <section className="py-16 md:py-24 relative overflow-hidden">
       {/* Background decoration */}
       <div className="absolute inset-0 bg-gradient-to-b from-background via-muted/30 to-background" />
       
@@ -69,12 +69,12 @@ const Features = () => {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.5 }}
-          className="text-center max-w-3xl mx-auto mb-16"
+          className="text-center max-w-3xl mx-auto mb-10 md:mb-16"
         >
           <span className="text-primary font-semibold text-sm uppercase tracking-wider">
             Features
           </span>
-          <h2 className="text-3xl md:text-5xl font-bold mt-4 mb-6">
+          <h2 className="text-2xl sm:text-3xl md:text-5xl font-bold mt-3 md:mt-4 mb-4 md:mb-6">
             Everything You Need to
             <br />
             <span className="gradient-text">Dominate LinkedIn</span>
@@ -91,12 +91,12 @@ const Features = () => {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.5, delay: 0.1 }}
-          className="flex flex-wrap justify-center gap-8 mb-20"
+          className="flex flex-wrap justify-center gap-4 md:gap-8 mb-12 md:mb-20"
         >
           {stats.map((stat, index) => (
             <div
               key={index}
-              className="flex items-center gap-4 px-6 py-4 rounded-2xl bg-card border border-border shadow-lg"
+              className="flex items-center gap-3 md:gap-4 px-4 md:px-6 py-3 md:py-4 rounded-2xl bg-card border border-border shadow-lg"
             >
               <div className="w-12 h-12 rounded-xl gradient-bg flex items-center justify-center">
                 <stat.icon className="w-6 h-6 text-primary-foreground" />
@@ -110,7 +110,7 @@ const Features = () => {
         </motion.div>
 
         {/* Features grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
           {features.map((feature, index) => (
             <motion.div
               key={index}
