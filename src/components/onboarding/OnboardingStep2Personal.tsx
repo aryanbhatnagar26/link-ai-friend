@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { ArrowRight, ArrowLeft, Linkedin, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -67,14 +68,16 @@ export const OnboardingStep2Personal = ({
   onBack,
   onNext,
 }: OnboardingStep2PersonalProps) => {
-  // Validate LinkedIn URL format
+  const [cityOther, setCityOther] = useState(false);
+  const [countryOther, setCountryOther] = useState(false);
+  const [professionOther, setProfessionOther] = useState(false);
+
   const isValidLinkedInUrl = (url: string) => {
     if (!url) return false;
     const pattern = /^https?:\/\/(www\.)?linkedin\.com\/in\/[\w-]+\/?$/i;
     return pattern.test(url.trim());
   };
 
-  // All fields are now required
   const canProceed = 
     fullName.trim() && 
     profession.trim() && 
@@ -83,6 +86,20 @@ export const OnboardingStep2Personal = ({
     city.trim() &&
     country.trim() &&
     isValidLinkedInUrl(linkedinUrl);
+
+  const handleSelectChange = (
+    value: string,
+    setter: (v: string) => void,
+    setOther: (v: boolean) => void,
+  ) => {
+    if (value === "Other") {
+      setOther(true);
+      setter("");
+    } else {
+      setOther(false);
+      setter(value);
+    }
+  };
 
   return (
     <motion.div
@@ -157,16 +174,30 @@ export const OnboardingStep2Personal = ({
           </div>
           <div>
             <Label htmlFor="city">City *</Label>
-            <Select value={city} onValueChange={setCity}>
-              <SelectTrigger className="mt-1.5">
-                <SelectValue placeholder="Select your city" />
-              </SelectTrigger>
-              <SelectContent>
-                {cities.map((c) => (
-                  <SelectItem key={c} value={c}>{c}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {cityOther ? (
+              <div className="flex gap-2 mt-1.5">
+                <Input
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  placeholder="Enter your city"
+                  autoFocus
+                />
+                <Button type="button" variant="ghost" size="sm" onClick={() => { setCityOther(false); setCity(""); }}>
+                  ✕
+                </Button>
+              </div>
+            ) : (
+              <Select value={city} onValueChange={(v) => handleSelectChange(v, setCity, setCityOther)}>
+                <SelectTrigger className="mt-1.5">
+                  <SelectValue placeholder="Select your city" />
+                </SelectTrigger>
+                <SelectContent>
+                  {cities.map((c) => (
+                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             {!city && (
               <p className="text-xs text-destructive mt-1">City is required</p>
             )}
@@ -175,16 +206,30 @@ export const OnboardingStep2Personal = ({
 
         <div>
           <Label htmlFor="country">Country *</Label>
-          <Select value={country} onValueChange={setCountry}>
-            <SelectTrigger className="mt-1.5">
-              <SelectValue placeholder="Select your country" />
-            </SelectTrigger>
-            <SelectContent>
-              {countries.map((c) => (
-                <SelectItem key={c} value={c}>{c}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {countryOther ? (
+            <div className="flex gap-2 mt-1.5">
+              <Input
+                value={country}
+                onChange={(e) => setCountry(e.target.value)}
+                placeholder="Enter your country"
+                autoFocus
+              />
+              <Button type="button" variant="ghost" size="sm" onClick={() => { setCountryOther(false); setCountry(""); }}>
+                ✕
+              </Button>
+            </div>
+          ) : (
+            <Select value={country} onValueChange={(v) => handleSelectChange(v, setCountry, setCountryOther)}>
+              <SelectTrigger className="mt-1.5">
+                <SelectValue placeholder="Select your country" />
+              </SelectTrigger>
+              <SelectContent>
+                {countries.map((c) => (
+                  <SelectItem key={c} value={c}>{c}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           {!country && (
             <p className="text-xs text-destructive mt-1">Country is required</p>
           )}
@@ -192,16 +237,30 @@ export const OnboardingStep2Personal = ({
 
         <div>
           <Label htmlFor="profession">Your Role/Profession *</Label>
-          <Select value={profession} onValueChange={setProfession}>
-            <SelectTrigger className="mt-1.5">
-              <SelectValue placeholder="Select your role" />
-            </SelectTrigger>
-            <SelectContent>
-              {professions.map((p) => (
-                <SelectItem key={p} value={p}>{p}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {professionOther ? (
+            <div className="flex gap-2 mt-1.5">
+              <Input
+                value={profession}
+                onChange={(e) => setProfession(e.target.value)}
+                placeholder="Enter your role/profession"
+                autoFocus
+              />
+              <Button type="button" variant="ghost" size="sm" onClick={() => { setProfessionOther(false); setProfession(""); }}>
+                ✕
+              </Button>
+            </div>
+          ) : (
+            <Select value={profession} onValueChange={(v) => handleSelectChange(v, setProfession, setProfessionOther)}>
+              <SelectTrigger className="mt-1.5">
+                <SelectValue placeholder="Select your role" />
+              </SelectTrigger>
+              <SelectContent>
+                {professions.map((p) => (
+                  <SelectItem key={p} value={p}>{p}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           {!profession && (
             <p className="text-xs text-destructive mt-1">Role/Profession is required</p>
           )}
