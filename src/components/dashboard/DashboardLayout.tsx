@@ -189,16 +189,19 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                   <Settings className="w-4 h-4 mr-2" />
                   Settings
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  className="text-destructive cursor-pointer"
-                  onSelect={(e) => {
-                    e.preventDefault();
-                    handleLogout();
-                  }}
-                >
-                  <LogOut className="w-4 h-4 mr-2" />
-                  Log out
+              <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <button
+                    type="button"
+                    className="w-full text-destructive cursor-pointer"
+                    onClick={() => {
+                      console.log('🔒 Logout clicked');
+                      handleLogout();
+                    }}
+                  >
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Log out
+                  </button>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
