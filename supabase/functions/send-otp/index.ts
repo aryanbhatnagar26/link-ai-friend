@@ -87,7 +87,7 @@ serve(async (req) => {
         Accept: "application/json",
       },
       body: JSON.stringify({
-        sender: { name: "LinkedBot", email: "noreply@linkedbot.online" },
+        sender: { name: "LINKEDBOT", email: "aryanbhatnagar.2601@gmail.com" },
         to: [{ email: email.toLowerCase().trim() }],
         subject: `${otp} is your LinkedBot verification code`,
         htmlContent: `
