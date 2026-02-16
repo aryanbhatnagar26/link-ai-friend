@@ -250,7 +250,7 @@ const AGENT_TYPE_CONFIG: Record<string, {
 // ============================================
 // BUILD AGENT-SPECIFIC SYSTEM PROMPT
 // ============================================
-function buildAgentSystemPrompt(agentType: string, userContext?: any): string {
+function buildAgentSystemPrompt(agentType: string, userContext?: any, agentSettings?: any): string {
   const config = AGENT_TYPE_CONFIG[agentType] || AGENT_TYPE_CONFIG.professional;
   const profile = userContext?.context?.profile || userContext?.agentContext?.profile || {};
   
@@ -294,6 +294,24 @@ TONE KEYWORDS: ${config.toneKeywords.join(", ")}
 
 EXAMPLE TOPICS FOR THIS USER:
 ${exampleTopics.map((t, i) => `${i + 1}. ${t}`).join("\n")}
+
+═══════════════════════════════════════════
+USER CUSTOM SETTINGS (MUST FOLLOW STRICTLY)
+═══════════════════════════════════════════
+${agentSettings?.tone ? `TONE: Write in a ${agentSettings.tone} tone. This overrides default tone keywords above.` : ''}
+${agentSettings?.emojiLevel !== undefined ? `EMOJI USAGE: ${
+  agentSettings.emojiLevel === 0 ? 'NO emojis at all. Zero. None.' :
+  agentSettings.emojiLevel === 1 ? 'MINIMAL emojis - use at most 1-2 emojis in the entire post.' :
+  agentSettings.emojiLevel === 2 ? 'MODERATE emojis - use 3-5 emojis spread naturally through the post.' :
+  'LOTS of emojis - use emojis generously (6-10+) throughout the post to make it expressive and engaging.'
+}` : ''}
+${agentSettings?.postLength ? `POST LENGTH: ${
+  agentSettings.postLength === 'short' ? 'Keep posts SHORT: 50-100 words MAXIMUM. Be concise and punchy.' :
+  agentSettings.postLength === 'medium' ? 'Keep posts MEDIUM length: 100-200 words. Balanced depth.' :
+  agentSettings.postLength === 'long' ? 'Write LONG posts: 200-300 words. Go deep with detail and storytelling.' :
+  `Target length: ${agentSettings.postLength}`
+}` : ''}
+${agentSettings?.voiceReference ? `VOICE STYLE: Write in the communication style of ${agentSettings.voiceReference}. Mimic their tone, cadence, and way of expressing ideas.` : ''}
 
 ═══════════════════════════════════════════
 CRITICAL BEHAVIOR RULES
@@ -449,15 +467,15 @@ Output ONLY the post text. No explanations. No meta-commentary.`;
 // ============================================
 // REAL AI FUNCTION (via Lovable AI Gateway)
 // ============================================
-async function callAI(prompt: string, conversationHistory: any[] = [], userContext?: any, agentType?: string): Promise<string> {
+async function callAI(prompt: string, conversationHistory: any[] = [], userContext?: any, agentType?: string, agentSettings?: any): Promise<string> {
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   
   if (!LOVABLE_API_KEY) {
     throw new Error("LOVABLE_API_KEY not configured");
   }
 
-  // Build agent-specific system prompt
-  const systemPrompt = buildAgentSystemPrompt(agentType || "professional", userContext);
+  // Build agent-specific system prompt with user settings
+  const systemPrompt = buildAgentSystemPrompt(agentType || "professional", userContext, agentSettings);
 
   try {
     console.log("🤖 Calling Lovable AI Gateway...");
@@ -1187,7 +1205,7 @@ Your post content here
 Make each post unique if there are multiple images.`;
 
           try {
-            const aiResponse = await callAI(imagePostPrompt, conversationHistory, userContext, agentType);
+            const aiResponse = await callAI(imagePostPrompt, conversationHistory, userContext, agentType, agentSettings);
             const postContent = extractPostContent(aiResponse);
             
             if (postContent) {
@@ -1282,7 +1300,7 @@ Or would you prefer different topics/timing?`;
           action = "execute_plan";
         } else {
           // No plan to confirm - use AI to respond
-          response = await callAI(message, conversationHistory, userContext, agentType);
+          response = await callAI(message, conversationHistory, userContext, agentType, agentSettings);
         }
         break;
       }
@@ -1434,7 +1452,7 @@ Or would you prefer different topics/timing?`;
         }
 
         // Call real AI for intelligent response
-        response = await callAI(enhancedPrompt, conversationHistory, userContext, agentType);
+        response = await callAI(enhancedPrompt, conversationHistory, userContext, agentType, agentSettings);
 
         // Extract post if AI created one
         const extracted = extractPostContent(response);
@@ -1460,7 +1478,7 @@ Or would you prefer different topics/timing?`;
       case "conversation":
       default: {
         // For general conversation, use AI
-        response = await callAI(message, conversationHistory, userContext, agentType);
+        response = await callAI(message, conversationHistory, userContext, agentType, agentSettings);
         
         // Check if AI created a post in the response
         const extracted = extractPostContent(response);
