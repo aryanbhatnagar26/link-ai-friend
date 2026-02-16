@@ -5,6 +5,30 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+const cities = [
+  "Mumbai", "Delhi", "Bangalore", "Hyderabad", "Chennai", "Kolkata", "Pune", "Ahmedabad",
+  "Jaipur", "Lucknow", "Surat", "Chandigarh", "Indore", "Nagpur", "Coimbatore",
+  "New York", "San Francisco", "London", "Dubai", "Singapore", "Toronto", "Sydney", "Other",
+];
+
+const countries = [
+  "India", "United States", "United Kingdom", "Canada", "Australia",
+  "UAE", "Singapore", "Germany", "France", "Netherlands", "Other",
+];
+
+const professions = [
+  "Marketing Director", "Software Engineer", "Product Manager", "CEO / Founder",
+  "Sales Manager", "Content Creator", "HR Manager", "Consultant",
+  "Data Analyst", "Designer", "Business Analyst", "Freelancer", "Other",
+];
 
 interface OnboardingStep2PersonalProps {
   fullName: string;
@@ -133,15 +157,17 @@ export const OnboardingStep2Personal = ({
           </div>
           <div>
             <Label htmlFor="city">City *</Label>
-            <Input
-              id="city"
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              placeholder="e.g., Mumbai"
-              className="mt-1.5"
-              required
-            />
-            {!city.trim() && (
+            <Select value={city} onValueChange={setCity}>
+              <SelectTrigger className="mt-1.5">
+                <SelectValue placeholder="Select your city" />
+              </SelectTrigger>
+              <SelectContent>
+                {cities.map((c) => (
+                  <SelectItem key={c} value={c}>{c}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {!city && (
               <p className="text-xs text-destructive mt-1">City is required</p>
             )}
           </div>
@@ -149,30 +175,34 @@ export const OnboardingStep2Personal = ({
 
         <div>
           <Label htmlFor="country">Country *</Label>
-          <Input
-            id="country"
-            value={country}
-            onChange={(e) => setCountry(e.target.value)}
-            placeholder="e.g., India"
-            className="mt-1.5"
-            required
-          />
-          {!country.trim() && (
+          <Select value={country} onValueChange={setCountry}>
+            <SelectTrigger className="mt-1.5">
+              <SelectValue placeholder="Select your country" />
+            </SelectTrigger>
+            <SelectContent>
+              {countries.map((c) => (
+                <SelectItem key={c} value={c}>{c}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {!country && (
             <p className="text-xs text-destructive mt-1">Country is required</p>
           )}
         </div>
 
         <div>
           <Label htmlFor="profession">Your Role/Profession *</Label>
-          <Input
-            id="profession"
-            value={profession}
-            onChange={(e) => setProfession(e.target.value)}
-            placeholder="e.g., Marketing Director"
-            className="mt-1.5"
-            required
-          />
-          {!profession.trim() && (
+          <Select value={profession} onValueChange={setProfession}>
+            <SelectTrigger className="mt-1.5">
+              <SelectValue placeholder="Select your role" />
+            </SelectTrigger>
+            <SelectContent>
+              {professions.map((p) => (
+                <SelectItem key={p} value={p}>{p}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {!profession && (
             <p className="text-xs text-destructive mt-1">Role/Profession is required</p>
           )}
         </div>
