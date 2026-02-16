@@ -66,9 +66,8 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     return `${plan.charAt(0).toUpperCase()}${plan.slice(1)} Plan`;
   };
 
-  const handleLogout = () => {
-    // Run logout synchronously to avoid dropdown swallowing the click
-    console.log('🔒 Logging out user from extension');
+  const handleLogout = async () => {
+    console.log('🔒 Logging out user');
     
     window.postMessage({ type: 'LOGOUT_USER' }, '*');
     window.postMessage({ type: 'CLEAR_USER_SESSION' }, '*');
@@ -77,14 +76,13 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       (window as any).LinkedBotBridge.clearUserSession();
     }
     
-    console.log('✅ User logout sent to extension');
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.error('Sign out error:', e);
+    }
     
-    supabase.auth.signOut().then(() => {
-      navigate("/login");
-    }).catch(() => {
-      // Force navigate even if signOut fails
-      navigate("/login");
-    });
+    window.location.href = "/login";
   };
 
   return (
