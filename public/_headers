@@ -1,0 +1,32 @@
+# Cache static assets aggressively (JS, CSS, images with hashed filenames)
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Cache images
+*.png
+  Cache-Control: public, max-age=2592000
+*.jpg
+  Cache-Control: public, max-age=2592000
+*.webp
+  Cache-Control: public, max-age=2592000
+*.svg
+  Cache-Control: public, max-age=2592000
+*.ico
+  Cache-Control: public, max-age=2592000
+
+# Cache fonts
+*.woff2
+  Cache-Control: public, max-age=31536000, immutable
+*.woff
+  Cache-Control: public, max-age=31536000, immutable
+
+# HTML - short cache to pick up new deployments
+/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+# Security headers
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: SAMEORIGIN
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
