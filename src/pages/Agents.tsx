@@ -30,10 +30,12 @@ import {
   Edit,
   Trash2,
   MessageSquare,
+  GraduationCap,
 } from "lucide-react";
 import { useAgents } from "@/hooks/useAgents";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { toast } from "sonner";
+import { ReferenceMaterials } from "@/components/agents/ReferenceMaterials";
 
 const agentTypes = [
   { id: "comedy", icon: Smile, label: "Comedy/Humorous", description: "Funny, light-hearted posts" },
@@ -50,6 +52,7 @@ const AgentsPage = () => {
   usePageTitle("AI Agents");
   const navigate = useNavigate();
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [trainAgentId, setTrainAgentId] = useState<string | null>(null);
   const [createStep, setCreateStep] = useState(1);
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -231,6 +234,15 @@ const AgentsPage = () => {
                   >
                     <MessageSquare className="w-4 h-4" />
                     Chat
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="text-primary hover:text-primary"
+                    onClick={() => setTrainAgentId(agent.id)}
+                    title="Train Agent"
+                  >
+                    <GraduationCap className="w-4 h-4" />
                   </Button>
                   <Button 
                     variant="ghost" 
@@ -474,6 +486,23 @@ const AgentsPage = () => {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+      {/* Train Agent Dialog */}
+      <Dialog open={!!trainAgentId} onOpenChange={(open) => !open && setTrainAgentId(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <GraduationCap className="w-5 h-5 text-primary" />
+              Train Agent
+            </DialogTitle>
+            <DialogDescription>
+              Upload writing samples, brand guidelines, topic notes, or any reference data. The agent will use this to match your style.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4">
+            <ReferenceMaterials agentId={trainAgentId} />
+          </div>
         </DialogContent>
       </Dialog>
     </DashboardLayout>
