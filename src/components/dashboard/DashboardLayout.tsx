@@ -67,22 +67,42 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   };
 
   const handleLogout = async () => {
-    console.log('🔒 Logging out user');
+    console.log('🔒 Logout: starting');
     
-    window.postMessage({ type: 'LOGOUT_USER' }, '*');
-    window.postMessage({ type: 'CLEAR_USER_SESSION' }, '*');
-    
-    if (typeof (window as any).LinkedBotBridge !== 'undefined') {
-      (window as any).LinkedBotBridge.clearUserSession();
-    }
-    
+    // Notify extension
     try {
-      await supabase.auth.signOut();
+      window.postMessage({ type: 'LOGOUT_USER' }, '*');
+      window.postMessage({ type: 'CLEAR_USER_SESSION' }, '*');
+      if (typeof (window as any).LinkedBotBridge?.clearUserSession === 'function') {
+        (window as any).LinkedBotBridge.clearUserSession();
+      }
     } catch (e) {
-      console.error('Sign out error:', e);
+      console.error('Extension cleanup error:', e);
     }
-    
-    window.location.href = "/login";
+
+    // Clear all auth data from storage first
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (key.startsWith('sb-') || key.includes('supabase') || key === 'token' || key === 'user')) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach(key => localStorage.removeItem(key));
+    sessionStorage.clear();
+    console.log('🔒 Logout: storage cleared');
+
+    // Try Supabase signOut (non-blocking)
+    try {
+      await supabase.auth.signOut({ scope: 'local' });
+      console.log('🔒 Logout: supabase signOut done');
+    } catch (e) {
+      console.error('🔒 Logout: signOut error (continuing):', e);
+    }
+
+    // Force redirect
+    console.log('🔒 Logout: redirecting to /login');
+    window.location.replace("/login");
   };
 
   return (
