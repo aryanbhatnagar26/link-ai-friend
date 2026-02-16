@@ -189,22 +189,18 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                   <Settings className="w-4 h-4 mr-2" />
                   Settings
                 </DropdownMenuItem>
-              <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <button
-                    type="button"
-                    className="w-full text-destructive cursor-pointer"
-                    onClick={() => {
-                      console.log('🔒 Logout clicked');
-                      handleLogout();
-                    }}
-                  >
-                    <LogOut className="w-4 h-4 mr-2" />
-                    Log out
-                  </button>
-                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            
+            {/* Logout button outside dropdown to avoid Radix event issues */}
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="flex items-center gap-2 w-full mt-2 px-4 py-2.5 rounded-xl text-sm text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+            >
+              <LogOut className="w-4 h-4" />
+              Log out
+            </button>
           </div>
         </div>
       </aside>
