@@ -86,7 +86,7 @@ const Pricing = forwardRef<HTMLElement>((_, ref) => {
   const navigate = useNavigate();
 
   return (
-    <section ref={ref} className="py-24 relative overflow-hidden" id="pricing">
+    <section ref={ref} className="py-16 md:py-24 relative overflow-hidden" id="pricing">
       {/* Background */}
       <div className="absolute inset-0 bg-gradient-to-b from-muted/30 via-background to-background" />
       
@@ -97,12 +97,12 @@ const Pricing = forwardRef<HTMLElement>((_, ref) => {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.5 }}
-          className="text-center max-w-3xl mx-auto mb-16"
+          className="text-center max-w-3xl mx-auto mb-10 md:mb-16"
         >
           <span className="text-primary font-semibold text-sm uppercase tracking-wider">
             Pricing
           </span>
-          <h2 className="text-3xl md:text-5xl font-bold mt-4 mb-6">
+          <h2 className="text-2xl sm:text-3xl md:text-5xl font-bold mt-3 md:mt-4 mb-4 md:mb-6">
             Simple, Transparent Pricing
           </h2>
           <p className="text-lg text-muted-foreground">
@@ -111,7 +111,7 @@ const Pricing = forwardRef<HTMLElement>((_, ref) => {
         </motion.div>
 
         {/* Pricing cards */}
-        <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 max-w-6xl mx-auto">
           {plans.map((plan, index) => (
             <motion.div
               key={index}
@@ -127,7 +127,7 @@ const Pricing = forwardRef<HTMLElement>((_, ref) => {
                 </div>
               )}
               
-              <div className={`h-full p-8 rounded-2xl border ${plan.popular ? 'border-primary shadow-glow' : 'border-border shadow-lg'} bg-card flex flex-col`}>
+              <div className={`h-full p-6 md:p-8 rounded-2xl border ${plan.popular ? 'border-primary shadow-glow' : 'border-border shadow-lg'} bg-card flex flex-col`}>
                 {/* Plan header */}
                 <div className="flex items-center gap-3 mb-4">
                   <div className={`w-12 h-12 rounded-xl ${plan.popular ? 'gradient-bg' : 'bg-muted'} flex items-center justify-center`}>
