@@ -9,6 +9,7 @@ const plans = [
     name: "Free",
     icon: Zap,
     price: "$0",
+    priceINR: "",
     period: "forever",
     description: "Perfect for getting started with LinkedIn automation",
     features: [
@@ -29,7 +30,8 @@ const plans = [
   {
     name: "Pro",
     icon: Crown,
-    price: "$19",
+    price: "$12",
+    priceINR: "₹999",
     period: "per month",
     description: "For professionals serious about LinkedIn growth",
     features: [
@@ -52,7 +54,8 @@ const plans = [
   {
     name: "Business",
     icon: Rocket,
-    price: "$49",
+    price: "$22",
+    priceINR: "₹1999",
     period: "per month",
     description: "For teams and agencies managing multiple brands",
     features: [
@@ -140,8 +143,18 @@ const Pricing = forwardRef<HTMLElement>((_, ref) => {
 
                 {/* Price */}
                 <div className="mb-4">
-                  <span className="text-4xl font-bold">{plan.price}</span>
-                  <span className="text-muted-foreground ml-2">/{plan.period}</span>
+                  {plan.priceINR ? (
+                    <>
+                      <span className="text-4xl font-bold">{plan.priceINR}</span>
+                      <span className="text-muted-foreground ml-2">/{plan.period}</span>
+                      <div className="text-sm text-muted-foreground mt-1">({plan.price} USD)</div>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-4xl font-bold">{plan.price}</span>
+                      <span className="text-muted-foreground ml-2">/{plan.period}</span>
+                    </>
+                  )}
                 </div>
 
                 <p className="text-muted-foreground mb-6">{plan.description}</p>
