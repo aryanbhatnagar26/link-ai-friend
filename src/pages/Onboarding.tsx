@@ -8,7 +8,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { OnboardingStep1 } from "@/components/onboarding/OnboardingStep1";
 import { OnboardingStep2Company } from "@/components/onboarding/OnboardingStep2Company";
 import { OnboardingStep2Personal } from "@/components/onboarding/OnboardingStep2Personal";
-import { OnboardingStepExtension } from "@/components/onboarding/OnboardingStepExtension";
 
 const Onboarding = () => {
   const [checkingAuth, setCheckingAuth] = useState(true);
@@ -16,7 +15,6 @@ const Onboarding = () => {
   const { toast } = useToast();
   const { completeOnboarding } = useUserProfile();
 
-  // Check auth on mount
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -34,7 +32,7 @@ const Onboarding = () => {
     
     checkAuth();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_OUT') {
         navigate("/login");
       }
@@ -72,7 +70,7 @@ const Onboarding = () => {
       const profileData = {
         user_type: accountType,
         linkedin_profile_url: linkedinUrl,
-        linkedin_profile_url_locked: true, // Lock the URL after save
+        linkedin_profile_url_locked: true,
         phone_number: phoneNumber,
         city,
         country,
@@ -138,9 +136,9 @@ const Onboarding = () => {
           </p>
         </div>
 
-        {/* Progress indicator - 3 steps */}
+        {/* Progress indicator - 2 steps now (no extension step) */}
         <div className="flex items-center justify-center gap-2 mb-8">
-          {[1, 2, 3].map((s) => (
+          {[1, 2].map((s) => (
             <div
               key={s}
               className={`h-2 rounded-full transition-all duration-300 ${
@@ -182,7 +180,7 @@ const Onboarding = () => {
                 country={country}
                 setCountry={setCountry}
                 onBack={() => setStep(1)}
-                onNext={() => setStep(3)}
+                onNext={handleComplete}
               />
             )}
 
@@ -203,13 +201,6 @@ const Onboarding = () => {
                 country={country}
                 setCountry={setCountry}
                 onBack={() => setStep(1)}
-                onNext={() => setStep(3)}
-              />
-            )}
-
-            {step === 3 && (
-              <OnboardingStepExtension
-                onBack={() => setStep(2)}
                 onNext={handleComplete}
               />
             )}

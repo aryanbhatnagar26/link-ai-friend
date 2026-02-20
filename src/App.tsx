@@ -4,7 +4,6 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { useExtensionEvents } from "@/hooks/useExtensionEvents";
 import { startAnalyticsCron } from "@/lib/analytics-cron";
 import { Loader2 } from "lucide-react";
 
@@ -21,6 +20,7 @@ const AgentChat = lazy(() => import("./pages/AgentChat"));
 const CalendarPage = lazy(() => import("./pages/CalendarPage"));
 const Analytics = lazy(() => import("./pages/Analytics"));
 const LinkedInConnection = lazy(() => import("./pages/LinkedInConnection"));
+const LinkedInCallback = lazy(() => import("./pages/LinkedInCallback"));
 const LinkedInProfile = lazy(() => import("./pages/LinkedInProfile"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Billing = lazy(() => import("./pages/Billing"));
@@ -46,7 +46,6 @@ const Documentation = lazy(() => import("./pages/resources/Documentation"));
 const Blog = lazy(() => import("./pages/resources/Blog"));
 const HelpCenter = lazy(() => import("./pages/resources/HelpCenter"));
 const Community = lazy(() => import("./pages/resources/Community"));
-const ChromeExtension = lazy(() => import("./pages/product/ChromeExtension"));
 const API = lazy(() => import("./pages/product/API"));
 
 // Lazy-loaded AdminRoute wrapper
@@ -62,9 +61,6 @@ const PageLoader = () => (
 
 // Inner component that uses hooks
 const AppContent = () => {
-  // Listen for extension events globally
-  useExtensionEvents();
-  
   // Start analytics cron job (runs every 2 hours)
   useEffect(() => {
     startAnalyticsCron();
@@ -90,6 +86,8 @@ const AppContent = () => {
             <Route path="/dashboard/profile" element={<LinkedInProfile />} />
             <Route path="/dashboard/settings" element={<Settings />} />
             <Route path="/dashboard/billing" element={<Billing />} />
+            {/* LinkedIn OAuth callback */}
+            <Route path="/auth/linkedin/callback" element={<LinkedInCallback />} />
             {/* Admin Login - public */}
             <Route path="/admin/login" element={<AdminLogin />} />
             {/* Protected Admin Routes */}
@@ -117,7 +115,6 @@ const AppContent = () => {
             <Route path="/help" element={<HelpCenter />} />
             <Route path="/community" element={<Community />} />
             {/* Product pages */}
-            <Route path="/extension" element={<ChromeExtension />} />
             <Route path="/api" element={<API />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

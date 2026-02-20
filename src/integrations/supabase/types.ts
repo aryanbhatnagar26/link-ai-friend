@@ -783,12 +783,16 @@ export type Database = {
           industry: string | null
           last_active_at: string | null
           last_post_date: string | null
+          linkedin_access_token: string | null
+          linkedin_id: string | null
           linkedin_profile_confirmed: boolean | null
           linkedin_profile_data: Json | null
           linkedin_profile_edit_count: number | null
           linkedin_profile_url: string | null
           linkedin_profile_url_locked: boolean | null
           linkedin_public_id: string | null
+          linkedin_refresh_token: string | null
+          linkedin_token_expires_at: string | null
           linkedin_username: string | null
           linkedin_verified: boolean | null
           linkedin_verified_at: string | null
@@ -825,12 +829,16 @@ export type Database = {
           industry?: string | null
           last_active_at?: string | null
           last_post_date?: string | null
+          linkedin_access_token?: string | null
+          linkedin_id?: string | null
           linkedin_profile_confirmed?: boolean | null
           linkedin_profile_data?: Json | null
           linkedin_profile_edit_count?: number | null
           linkedin_profile_url?: string | null
           linkedin_profile_url_locked?: boolean | null
           linkedin_public_id?: string | null
+          linkedin_refresh_token?: string | null
+          linkedin_token_expires_at?: string | null
           linkedin_username?: string | null
           linkedin_verified?: boolean | null
           linkedin_verified_at?: string | null
@@ -867,12 +875,16 @@ export type Database = {
           industry?: string | null
           last_active_at?: string | null
           last_post_date?: string | null
+          linkedin_access_token?: string | null
+          linkedin_id?: string | null
           linkedin_profile_confirmed?: boolean | null
           linkedin_profile_data?: Json | null
           linkedin_profile_edit_count?: number | null
           linkedin_profile_url?: string | null
           linkedin_profile_url_locked?: boolean | null
           linkedin_public_id?: string | null
+          linkedin_refresh_token?: string | null
+          linkedin_token_expires_at?: string | null
           linkedin_username?: string | null
           linkedin_verified?: boolean | null
           linkedin_verified_at?: string | null

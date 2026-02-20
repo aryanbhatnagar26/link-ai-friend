@@ -69,17 +69,6 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const handleLogout = async () => {
     console.log('🔒 Logout: starting');
     
-    // Notify extension
-    try {
-      window.postMessage({ type: 'LOGOUT_USER' }, '*');
-      window.postMessage({ type: 'CLEAR_USER_SESSION' }, '*');
-      if (typeof (window as any).LinkedBotBridge?.clearUserSession === 'function') {
-        (window as any).LinkedBotBridge.clearUserSession();
-      }
-    } catch (e) {
-      console.error('Extension cleanup error:', e);
-    }
-
     // Clear all auth data from storage first
     const keysToRemove: string[] = [];
     for (let i = 0; i < localStorage.length; i++) {

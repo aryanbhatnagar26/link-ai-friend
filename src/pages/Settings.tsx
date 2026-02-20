@@ -41,12 +41,12 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useLinkedBotExtension } from "@/hooks/useLinkedBotExtension";
+import { useLinkedInAPI } from "@/hooks/useLinkedInAPI";
 
 const SettingsPage = () => {
   usePageTitle("Settings");
   const { profile, isLoading, saveProfile } = useUserProfile();
-  const { isConnected: extensionConnected } = useLinkedBotExtension();
+  const { isConnected: linkedInConnected } = useLinkedInAPI();
   const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
   const [isAutoVerifying, setIsAutoVerifying] = useState(false);

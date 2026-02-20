@@ -3,9 +3,7 @@ import { motion } from "framer-motion";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { ExtensionStatus } from "@/components/ExtensionStatus";
-import { ExtensionTestPanel } from "@/components/extension/ExtensionTestPanel";
-import { MissingProfileBanner } from "@/components/linkedin/MissingProfileBanner";
-import { useLinkedBotExtension } from "@/hooks/useLinkedBotExtension";
+import { useLinkedInAPI } from "@/hooks/useLinkedInAPI";
 import { useLinkedInAnalytics } from "@/hooks/useLinkedInAnalytics";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { useAgents } from "@/hooks/useAgents";
@@ -104,7 +102,7 @@ function getPostDisplayStatus(post: ScheduledPost): 'published' | 'posted_pendin
 const DashboardPage = () => {
   usePageTitle("Dashboard");
   const navigate = useNavigate();
-  const { isConnected, sendPendingPosts } = useLinkedBotExtension();
+  const { isConnected } = useLinkedInAPI();
   const { profile, isLoading: profileLoading, fetchProfile } = useUserProfile();
   const { posts: analyticsPosts, isLoading: analyticsLoading } = useLinkedInAnalytics();
   const { agents, isLoading: agentsLoading } = useAgents();
@@ -242,57 +240,7 @@ const DashboardPage = () => {
     return () => window.removeEventListener('focus', handleFocus);
   }, [fetchPosts]);
 
-  // Listen for extension events via window.postMessage
-  useEffect(() => {
-    const handleExtensionMessage = (event: MessageEvent) => {
-      // Only accept messages from our extension
-      if (event.data?.action !== 'extensionEvent') return;
-      
-      console.log('📡 Extension event received:', event.data);
-      
-      if (event.data.event === 'analyticsUpdated') {
-        const { trackingId, analytics } = event.data.data || {};
-        if (trackingId && analytics) {
-          updatePostAnalytics(trackingId, analytics);
-          toast.success('Analytics updated!', {
-            description: `Views: ${analytics.views || 0}, Likes: ${analytics.likes || 0}`,
-          });
-        }
-      }
-      
-      if (event.data.event === 'postPublished') {
-        console.log('✅ Post published via extension:', event.data.data);
-        fetchPosts(); // Refetch to get latest status
-        toast.success('Post published successfully!');
-      }
-    };
-
-    // Also listen for custom DOM events from bridge
-    const handlePostPublished = (event: Event) => {
-      const customEvent = event as CustomEvent;
-      console.log('✅ Post published (bridge):', customEvent.detail);
-      fetchPosts();
-    };
-
-    const handleAnalyticsUpdated = (event: Event) => {
-      const customEvent = event as CustomEvent;
-      console.log('📊 Analytics updated (bridge):', customEvent.detail);
-      const { trackingId, analytics, postId } = customEvent.detail || {};
-      if (trackingId || postId) {
-        updatePostAnalytics(trackingId || postId, analytics || customEvent.detail);
-      }
-    };
-
-    window.addEventListener('message', handleExtensionMessage);
-    window.addEventListener('linkedbot:post-published', handlePostPublished);
-    window.addEventListener('linkedbot:analytics-updated', handleAnalyticsUpdated);
-
-    return () => {
-      window.removeEventListener('message', handleExtensionMessage);
-      window.removeEventListener('linkedbot:post-published', handlePostPublished);
-      window.removeEventListener('linkedbot:analytics-updated', handleAnalyticsUpdated);
-    };
-  }, [fetchPosts, updatePostAnalytics]);
+  // No extension event listeners needed - using LinkedIn API directly
 
   // Calculate real stats - count pending + posted
   const totalViews = analyticsPosts.reduce((sum, p) => sum + (p.views || 0), 0);
@@ -353,24 +301,13 @@ const DashboardPage = () => {
   return (
     <DashboardLayout>
       <div className="space-y-8">
-        {/* Extension Status */}
+        {/* LinkedIn Connection Status */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
         >
           <ExtensionStatus />
         </motion.div>
-
-        {/* Missing Profile URL Banner - Show if extension connected but no profile URL */}
-        {isConnected && !profile?.linkedin_profile_url && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-          >
-            <MissingProfileBanner onProfileSaved={fetchProfile} />
-          </motion.div>
-        )}
         
         {/* Header */}
         <motion.div
@@ -693,10 +630,7 @@ const DashboardPage = () => {
             </p>
           </button>
           
-          {/* Extension Test Panel in grid */}
-          <div className="sm:col-span-2 lg:col-span-1">
-            <ExtensionTestPanel />
-          </div>
+          {/* LinkedIn API Status */}
         </motion.div>
       </div>
 

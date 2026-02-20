@@ -4,7 +4,7 @@ import {
   Calendar, 
   BarChart3, 
   Image, 
-  Chrome, 
+  Linkedin, 
   Sparkles,
   Clock,
   Target,
@@ -37,9 +37,9 @@ const features = [
     color: "from-warning to-warning/60",
   },
   {
-    icon: Chrome,
-    title: "Chrome Extension",
-    description: "Our extension mimics human behavior to post naturally, keeping your account safe and authentic.",
+    icon: Linkedin,
+    title: "Official LinkedIn API",
+    description: "Post directly via LinkedIn's official API — secure, reliable, and no browser extensions needed.",
     color: "from-primary to-secondary",
   },
   {
@@ -80,7 +80,7 @@ const Features = () => {
             <span className="gradient-text">Dominate LinkedIn</span>
           </h2>
           <p className="text-lg text-muted-foreground">
-            LinkedBot combines cutting-edge AI with smart automation to transform 
+            LinkedBot combines cutting-edge AI with the official LinkedIn API to transform 
             how you create and publish LinkedIn content.
           </p>
         </motion.div>
