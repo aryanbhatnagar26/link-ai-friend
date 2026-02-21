@@ -140,7 +140,7 @@ const AdminPaymentsPage = () => {
     try {
       // Get all user profiles
       const { data: profiles, error } = await supabase
-        .from("user_profiles")
+        .from("user_profiles_safe")
         .select("*")
         .order("created_at", { ascending: false });
 

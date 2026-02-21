@@ -971,7 +971,138 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      user_profiles_safe: {
+        Row: {
+          background: string | null
+          city: string | null
+          company_description: string | null
+          company_name: string | null
+          country: string | null
+          created_at: string | null
+          daily_post_count: number | null
+          default_topics: string[] | null
+          email: string | null
+          id: string | null
+          industry: string | null
+          last_active_at: string | null
+          last_post_date: string | null
+          linkedin_id: string | null
+          linkedin_profile_confirmed: boolean | null
+          linkedin_profile_data: Json | null
+          linkedin_profile_edit_count: number | null
+          linkedin_profile_url: string | null
+          linkedin_profile_url_locked: boolean | null
+          linkedin_public_id: string | null
+          linkedin_username: string | null
+          linkedin_verified: boolean | null
+          linkedin_verified_at: string | null
+          location: string | null
+          name: string | null
+          onboarding_completed: boolean | null
+          phone_number: string | null
+          post_frequency: string | null
+          posting_goals: string[] | null
+          posts_created_count: number | null
+          posts_published_count: number | null
+          posts_scheduled_count: number | null
+          preferred_tone: string | null
+          profile_last_scraped: string | null
+          role: string | null
+          subscription_expires_at: string | null
+          subscription_plan: string | null
+          target_audience: string | null
+          updated_at: string | null
+          user_id: string | null
+          user_type: string | null
+        }
+        Insert: {
+          background?: string | null
+          city?: string | null
+          company_description?: string | null
+          company_name?: string | null
+          country?: string | null
+          created_at?: string | null
+          daily_post_count?: number | null
+          default_topics?: string[] | null
+          email?: string | null
+          id?: string | null
+          industry?: string | null
+          last_active_at?: string | null
+          last_post_date?: string | null
+          linkedin_id?: string | null
+          linkedin_profile_confirmed?: boolean | null
+          linkedin_profile_data?: Json | null
+          linkedin_profile_edit_count?: number | null
+          linkedin_profile_url?: string | null
+          linkedin_profile_url_locked?: boolean | null
+          linkedin_public_id?: string | null
+          linkedin_username?: string | null
+          linkedin_verified?: boolean | null
+          linkedin_verified_at?: string | null
+          location?: string | null
+          name?: string | null
+          onboarding_completed?: boolean | null
+          phone_number?: string | null
+          post_frequency?: string | null
+          posting_goals?: string[] | null
+          posts_created_count?: number | null
+          posts_published_count?: number | null
+          posts_scheduled_count?: number | null
+          preferred_tone?: string | null
+          profile_last_scraped?: string | null
+          role?: string | null
+          subscription_expires_at?: string | null
+          subscription_plan?: string | null
+          target_audience?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+          user_type?: string | null
+        }
+        Update: {
+          background?: string | null
+          city?: string | null
+          company_description?: string | null
+          company_name?: string | null
+          country?: string | null
+          created_at?: string | null
+          daily_post_count?: number | null
+          default_topics?: string[] | null
+          email?: string | null
+          id?: string | null
+          industry?: string | null
+          last_active_at?: string | null
+          last_post_date?: string | null
+          linkedin_id?: string | null
+          linkedin_profile_confirmed?: boolean | null
+          linkedin_profile_data?: Json | null
+          linkedin_profile_edit_count?: number | null
+          linkedin_profile_url?: string | null
+          linkedin_profile_url_locked?: boolean | null
+          linkedin_public_id?: string | null
+          linkedin_username?: string | null
+          linkedin_verified?: boolean | null
+          linkedin_verified_at?: string | null
+          location?: string | null
+          name?: string | null
+          onboarding_completed?: boolean | null
+          phone_number?: string | null
+          post_frequency?: string | null
+          posting_goals?: string[] | null
+          posts_created_count?: number | null
+          posts_published_count?: number | null
+          posts_scheduled_count?: number | null
+          preferred_tone?: string | null
+          profile_last_scraped?: string | null
+          role?: string | null
+          subscription_expires_at?: string | null
+          subscription_plan?: string | null
+          target_audience?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+          user_type?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       get_admin_scheduled_posts: {

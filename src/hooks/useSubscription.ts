@@ -64,7 +64,7 @@ export const useSubscription = () => {
 
       // Get user profile with subscription info
       const { data: profile } = await supabase
-        .from("user_profiles")
+        .from("user_profiles_safe")
         .select("subscription_plan, subscription_expires_at, posts_created_count, posts_scheduled_count, posts_published_count")
         .eq("user_id", user.id)
         .maybeSingle();
@@ -160,7 +160,7 @@ export const useSubscription = () => {
 
       // Check if coupon was already used
       const { data: profile } = await supabase
-        .from("user_profiles")
+        .from("user_profiles_safe")
         .select("subscription_plan")
         .eq("user_id", user.id)
         .maybeSingle();

@@ -163,7 +163,7 @@ export const useProfileSync = () => {
       await new Promise(resolve => setTimeout(resolve, intervalMs));
 
       const { data } = await supabase
-        .from('user_profiles')
+        .from('user_profiles_safe')
         .select('linkedin_profile_data, profile_last_scraped')
         .eq('user_id', user.id)
         .single();

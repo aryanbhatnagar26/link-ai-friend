@@ -71,7 +71,7 @@ export const useAgents = () => {
 
       // Get user's subscription plan to check agent limits
       const { data: profileData } = await supabase
-        .from("user_profiles")
+        .from("user_profiles_safe")
         .select("subscription_plan")
         .eq("user_id", user.id)
         .single();

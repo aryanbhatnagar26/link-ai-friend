@@ -83,7 +83,7 @@ const AdminSettings = () => {
 
   const fetchDbStats = async () => {
     const [usersRes, agentsRes, postsRes, notifRes] = await Promise.all([
-      supabase.from('user_profiles').select('*', { count: 'exact', head: true }),
+      supabase.from('user_profiles_safe').select('*', { count: 'exact', head: true }),
       supabase.from('agents').select('*', { count: 'exact', head: true }),
       supabase.from('posts').select('*', { count: 'exact', head: true }),
       supabase.from('notifications').select('*', { count: 'exact', head: true }),
