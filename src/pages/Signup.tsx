@@ -31,7 +31,7 @@ const Signup = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         const { data: profile } = await supabase
-          .from('user_profiles')
+          .from('user_profiles_safe')
           .select('onboarding_completed')
           .eq('user_id', session.user.id)
           .maybeSingle();
@@ -50,7 +50,7 @@ const Signup = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session) {
         const { data: profile } = await supabase
-          .from('user_profiles')
+          .from('user_profiles_safe')
           .select('onboarding_completed')
           .eq('user_id', session.user.id)
           .maybeSingle();

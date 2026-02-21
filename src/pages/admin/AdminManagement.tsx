@@ -136,7 +136,7 @@ const AdminManagement = () => {
       const adminDetails: AdminUser[] = [];
       for (const role of roles || []) {
         const { data: profile } = await supabase
-          .from('user_profiles')
+          .from('user_profiles_safe')
           .select('email, name')
           .eq('user_id', role.user_id)
           .single();
@@ -169,7 +169,7 @@ const AdminManagement = () => {
     try {
       // First, check if user exists by looking up in user_profiles
       const { data: existingProfile } = await supabase
-        .from('user_profiles')
+        .from('user_profiles_safe')
         .select('user_id')
         .eq('email', newAdminEmail.trim().toLowerCase())
         .single();

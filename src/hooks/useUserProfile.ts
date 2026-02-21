@@ -99,7 +99,7 @@ export const useUserProfile = () => {
       }
 
       const { data, error: fetchError } = await supabase
-        .from("user_profiles")
+        .from("user_profiles_safe")
         .select("*")
         .eq("user_id", user.id)
         .maybeSingle();

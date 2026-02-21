@@ -42,7 +42,7 @@ export const usePostingLimits = () => {
 
       // Get user profile for plan
       const { data: profile } = await supabase
-        .from('user_profiles')
+        .from('user_profiles_safe')
         .select('subscription_plan')
         .eq('user_id', user.id)
         .maybeSingle();
