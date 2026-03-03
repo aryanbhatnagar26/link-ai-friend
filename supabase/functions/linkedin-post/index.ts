@@ -139,9 +139,18 @@ serve(async (req) => {
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : String(err);
     console.error("❌ LinkedIn post error:", errorMsg);
+    // Store full error in DB for admin debugging, but return generic message to client
     await markPostFailed(supabaseAdmin, postId, errorMsg);
+    // Determine a safe, user-facing message (no API internals)
+    const safeMsg = errorMsg.includes("not connected")
+      ? errorMsg
+      : errorMsg.includes("token expired")
+        ? errorMsg
+        : errorMsg.includes("Image too large")
+          ? errorMsg
+          : "Failed to publish to LinkedIn. Please try again.";
     return new Response(
-      JSON.stringify({ error: errorMsg }),
+      JSON.stringify({ error: safeMsg }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
