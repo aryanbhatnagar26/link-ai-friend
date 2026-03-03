@@ -75,7 +75,7 @@ serve(async (req) => {
     };
 
     const HUGGINGFACE_API_KEY = Deno.env.get("HUGGINGFACE_API_KEY");
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
     
     // ALWAYS generate image prompt from actual post content
     // Only use provided prompt as additional hint, not replacement
@@ -184,18 +184,18 @@ serve(async (req) => {
       }
     }
 
-    // Fallback to Lovable AI if Hugging Face didn't work
-    if (!imageUrl && LOVABLE_API_KEY) {
-      console.log("🔄 Falling back to Lovable AI Gateway...");
+    // Fallback to Gemini API if Hugging Face didn't work
+    if (!imageUrl && GEMINI_API_KEY) {
+      console.log("🔄 Falling back to Google Gemini API...");
       
-      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      const response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          Authorization: `Bearer ${GEMINI_API_KEY}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "google/gemini-3-pro-image-preview",
+          model: "gemini-2.0-flash-exp",
           messages: [
             {
               role: "user",
@@ -229,7 +229,7 @@ serve(async (req) => {
       imageUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
       
       if (imageUrl) {
-        console.log("✅ Lovable AI image generated successfully");
+        console.log("✅ Gemini image generated successfully");
       }
     }
 
@@ -241,7 +241,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({
       success: true,
       imageUrl: imageUrl,
-      provider: imageBase64 ? "huggingface" : "lovable",
+      provider: imageBase64 ? "huggingface" : "gemini",
       message: "Image generated successfully!"
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
