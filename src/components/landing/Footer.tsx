@@ -116,6 +116,11 @@ const Footer = forwardRef<HTMLElement>((_, ref) => {
                   GDPR
                 </button>
               </li>
+              <li>
+                <button onClick={() => handleNavClick("/refund-policy")} className="hover:text-sidebar-foreground transition-colors">
+                  Refund Policy
+                </button>
+              </li>
             </ul>
           </div>
         </div>
