@@ -45,6 +45,7 @@ const PrivacyPolicy = lazy(() => import("./pages/legal/PrivacyPolicy"));
 const TermsOfService = lazy(() => import("./pages/legal/TermsOfService"));
 const CookiePolicy = lazy(() => import("./pages/legal/CookiePolicy"));
 const GDPR = lazy(() => import("./pages/legal/GDPR"));
+const RefundPolicy = lazy(() => import("./pages/legal/RefundPolicy"));
 const Documentation = lazy(() => import("./pages/resources/Documentation"));
 const Blog = lazy(() => import("./pages/resources/Blog"));
 const HelpCenter = lazy(() => import("./pages/resources/HelpCenter"));
@@ -130,6 +131,7 @@ const AppContent = () => {
             <Route path="/terms" element={<TermsOfService />} />
             <Route path="/cookies" element={<CookiePolicy />} />
             <Route path="/gdpr" element={<GDPR />} />
+            <Route path="/refund-policy" element={<RefundPolicy />} />
             {/* Resource pages */}
             <Route path="/docs" element={<Documentation />} />
             <Route path="/blog" element={<Blog />} />
